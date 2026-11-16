@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Link } from 'expo-router';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
@@ -30,10 +30,9 @@ const SEMANA: { dia: string; feitos: Modalidade[]; hoje?: boolean }[] = [
 ];
 
 export default function Hoje() {
-  // Sugestão = o treino que está há mais tempo sem ser feito. O aluno pode trocar por qualquer outro.
-  const sugerido = 'C';
-  const [escolhido, setEscolhido] = useState(sugerido);
-  const treino = TREINOS.find((t) => t.letra === escolhido)!;
+  // Treino de hoje = o que está no plano para hoje. O app não sugere troca:
+  // se quiser fazer outro, o aluno abre "Meus treinos" (aba Treinar, Etapa 2) e começa qualquer um.
+  const treino = TREINOS[0];
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
@@ -50,7 +49,7 @@ export default function Hoje() {
           <View style={estilos.treinoTopo}>
             <View style={{ flex: 1, gap: Espaco.xs }}>
               <Texto variante="rotulo" cor={Cores.verde}>
-                {escolhido === sugerido ? 'SUGERIDO PARA HOJE' : 'VOCÊ TROCOU O TREINO'}
+                TREINO DE HOJE
               </Texto>
               <Texto variante="subtitulo">{treino.nome}</Texto>
               <Texto variante="legenda">
@@ -61,25 +60,12 @@ export default function Hoje() {
               {treino.letra}
             </Texto>
           </View>
-          <View style={estilos.trocar}>
-            <Texto variante="legenda">Aparelho lotado? Troque:</Texto>
-            {TREINOS.map((t) => {
-              const ativo = t.letra === escolhido;
-              return (
-                <Pressable
-                  key={t.letra}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
-                  onPress={() => setEscolhido(t.letra)}
-                  style={[estilos.letraBotao, ativo && estilos.letraBotaoAtivo]}>
-                  <Texto variante="subtitulo" cor={ativo ? Cores.preto : Cores.texto}>
-                    {t.letra}
-                  </Texto>
-                </Pressable>
-              );
-            })}
-          </View>
           <Botao titulo="Começar treino" />
+          <Link href="/" style={estilos.linkTreinos}>
+            <Texto variante="corpo" cor={Cores.textoSecundario}>
+              Ver todos os meus treinos →
+            </Texto>
+          </Link>
         </View>
 
         <View style={estilos.linhaNumeros}>
@@ -206,29 +192,14 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     overflow: 'hidden',
   },
-  trocar: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: Espaco.sm,
-  },
-  letraBotao: {
-    width: 44,
-    height: 44,
-    borderRadius: Raio.sm,
-    borderWidth: 1.5,
-    borderColor: Cores.borda,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letraBotaoAtivo: {
-    backgroundColor: Cores.verde,
-    borderColor: Cores.verde,
-  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Espaco.sm,
+  },
+  linkTreinos: {
+    alignSelf: 'center',
+    paddingVertical: Espaco.xs,
   },
   aviso: {
     textAlign: 'center',
