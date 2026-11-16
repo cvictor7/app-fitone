@@ -5,6 +5,7 @@ import { IconeSeta } from '@/components/icones';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import { PERSONAL } from '@/dados/exemplo';
+import { useSessao } from '@/lib/sessao';
 
 // Aba "Perfil". Login, consentimentos e exclusão de conta entram nas Etapas 4 e 14.
 
@@ -12,22 +13,39 @@ const ITENS = [
   { titulo: 'Meu personal', detalhe: PERSONAL.nome },
   { titulo: 'Privacidade', detalhe: 'quem vê meus treinos' },
   { titulo: 'Relógio e apps', detalhe: 'Apple Saúde, Strava · Fase 2' },
-  { titulo: 'Sair', detalhe: '' },
 ];
 
+function iniciais(nome: string) {
+  const partes = nome.trim().split(/\s+/);
+  return ((partes[0]?.[0] ?? '') + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
+
 export default function Perfil() {
+  const { perfil, sessao, papel, sair } = useSessao();
+  const nome = perfil?.nome || 'Sem nome';
+
+  function confirmarSaida() {
+    Alert.alert('Sair da conta?', 'Para entrar de novo você vai receber um código no e-mail.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: sair },
+    ]);
+  }
+
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
       <ScrollView contentContainerStyle={estilos.conteudo}>
         <View style={estilos.cabecalho}>
           <View style={estilos.avatar}>
             <Texto variante="titulo" cor={Cores.preto}>
-              VM
+              {iniciais(nome)}
             </Texto>
           </View>
           <View style={{ gap: 2 }}>
-            <Texto variante="subtitulo">Victor Mendes</Texto>
-            <Texto variante="legenda">Aluno · Fit One Manaus</Texto>
+            <Texto variante="subtitulo">{nome}</Texto>
+            <Texto variante="legenda">
+              {papel === 'personal' ? 'Personal' : 'Aluno'} · Fit One Manaus
+            </Texto>
+            <Texto variante="legenda">{sessao?.user.email}</Texto>
           </View>
         </View>
 
@@ -46,6 +64,13 @@ export default function Perfil() {
             </Pressable>
           ))}
         </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={confirmarSaida}
+          style={({ pressed }) => [estilos.sair, pressed && { opacity: 0.7 }]}>
+          <Texto variante="corpo">Sair</Texto>
+        </Pressable>
 
         <Pressable onPress={() => Alert.alert('Excluir conta', 'Chega na Etapa 14.')} style={{ alignSelf: 'center' }}>
           <Texto variante="legenda" cor={Cores.perigo}>
@@ -72,4 +97,12 @@ const estilos = StyleSheet.create({
   lista: { backgroundColor: Cores.superficie, borderRadius: Raio.lg, paddingHorizontal: Espaco.md },
   linha: { flexDirection: 'row', alignItems: 'center', minHeight: 64, gap: Espaco.md },
   separador: { borderTopWidth: 1, borderTopColor: Cores.borda },
+  sair: {
+    minHeight: 56,
+    borderRadius: Raio.md,
+    borderWidth: 1.5,
+    borderColor: Cores.borda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

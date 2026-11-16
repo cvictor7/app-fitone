@@ -8,12 +8,15 @@ import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
 import { RECORDES, SEMANA, TREINO_DE_HOJE, buscarTreino } from '@/dados/exemplo';
+import { useSessao } from '@/lib/sessao';
 
 // Tela "Hoje". Dados de exemplo até o Supabase entrar (Etapa 6 troca pelos reais).
 // Mostra o treino que o plano manda hoje. O app não sugere troca:
 // para fazer outro, o aluno abre "Ver todos os meus treinos" (aba Treinar).
 
 export default function Hoje() {
+  const { perfil } = useSessao();
+  const primeiroNome = perfil?.nome?.split(' ')[0] ?? '';
   const treino = buscarTreino(TREINO_DE_HOJE)!;
   const recorde = RECORDES[0];
   const treinosNaSemana = SEMANA.reduce((total, d) => total + d.feitos.length, 0);
@@ -27,7 +30,7 @@ export default function Hoje() {
           <Texto variante="legenda">Quinta, 19 nov</Texto>
         </View>
 
-        <Texto variante="titulo">Bora, Victor</Texto>
+        <Texto variante="titulo">Bora, {primeiroNome}</Texto>
 
         {/* Treino de hoje: a letra gigante é o elemento marcante, como o "1" dentro do ONE do logo */}
         <View style={estilos.treinoDia}>
