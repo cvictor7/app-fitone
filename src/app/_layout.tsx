@@ -1,18 +1,39 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { DarkTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { ArquivosDeFonte, Cores } from '@/constants/theme';
 
+// Segura a tela de abertura (logo) até as fontes carregarem
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+const TemaFitOne = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    primary: Cores.verde,
+    background: Cores.fundo,
+    card: Cores.fundo,
+    text: Cores.texto,
+    border: Cores.borda,
+  },
+};
+
+export default function RootLayout() {
+  const [fontesProntas, erroFontes] = useFonts(ArquivosDeFonte);
+
+  useEffect(() => {
+    if (fontesProntas || erroFontes) SplashScreen.hideAsync();
+  }, [fontesProntas, erroFontes]);
+
+  if (!fontesProntas && !erroFontes) return null;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
+    <ThemeProvider value={TemaFitOne}>
+      <StatusBar style="light" />
+      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: Cores.fundo } }} />
     </ThemeProvider>
   );
 }

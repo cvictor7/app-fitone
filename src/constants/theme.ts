@@ -1,65 +1,82 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://unistyl.es/), etc.
- */
+// Identidade da Fit One Manaus (igual ao site fitonemanaus.com.br).
+// Tema escuro é o padrão do app.
 
-import '@/global.css';
+export const Cores = {
+  verde: '#70E000',
+  verdeEscuro: '#4F9E00',
+  preto: '#0A0A0A',
+  branco: '#FFFFFF',
+  cinza: '#A9AEA9',
 
-import { Platform } from 'react-native';
+  // Superfícies do tema escuro (do mais fundo para o mais alto)
+  fundo: '#0A0A0A',
+  superficie: '#141614',
+  superficieAlta: '#1D201D',
+  borda: '#2A2E2A',
 
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-  },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-  },
+  texto: '#FFFFFF',
+  textoSecundario: '#A9AEA9',
+  textoApagado: '#6B706B',
+
+  perigo: '#FF5E7A',
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
+export type Modalidade =
+  | 'musculacao'
+  | 'hybrid'
+  | 'cross'
+  | 'corrida'
+  | 'bike'
+  | 'hyrox'
+  | 'livre';
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+// Cada modalidade tem sua cor. A ordem aqui é a ordem em que aparecem no app.
+export const Modalidades: Record<Modalidade, { nome: string; cor: string }> = {
+  musculacao: { nome: 'Musculação', cor: '#70E000' },
+  hybrid: { nome: 'Hybrid', cor: '#B7A6FF' },
+  cross: { nome: 'Cross', cor: '#FF5E7A' },
+  corrida: { nome: 'Corrida', cor: '#FF8A3D' },
+  bike: { nome: 'Bike', cor: '#3DD6C4' },
+  hyrox: { nome: 'Hyrox', cor: '#FFC83D' },
+  livre: { nome: 'Livre', cor: '#A9AEA9' },
+};
 
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const ListaModalidades = Object.keys(Modalidades) as Modalidade[];
+
+// Nomes das fontes (iguais às chaves carregadas em src/app/_layout.tsx)
+export const Fontes = {
+  display: 'BigShouldersDisplay_900Black',
+  titulo: 'BigShouldersDisplay_800ExtraBold',
+  texto: 'Archivo_400Regular',
+  textoMedio: 'Archivo_500Medium',
+  textoSemi: 'Archivo_600SemiBold',
+  textoNegrito: 'Archivo_700Bold',
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const ArquivosDeFonte = {
+  BigShouldersDisplay_900Black: require('../../assets/fonts/BigShouldersDisplay_900Black.ttf'),
+  BigShouldersDisplay_800ExtraBold: require('../../assets/fonts/BigShouldersDisplay_800ExtraBold.ttf'),
+  Archivo_400Regular: require('../../assets/fonts/Archivo_400Regular.ttf'),
+  Archivo_500Medium: require('../../assets/fonts/Archivo_500Medium.ttf'),
+  Archivo_600SemiBold: require('../../assets/fonts/Archivo_600SemiBold.ttf'),
+  Archivo_700Bold: require('../../assets/fonts/Archivo_700Bold.ttf'),
+};
+
+export const Espaco = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 48,
+} as const;
+
+export const Raio = {
+  sm: 8,
+  md: 14,
+  lg: 22,
+  pilula: 999,
+} as const;
+
+// Área mínima de toque: grande para usar com a mão suada, entre uma série e outra
+export const ToqueMinimo = 56;
