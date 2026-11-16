@@ -1,26 +1,24 @@
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconeSeta } from '@/components/icones';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
-import { PERSONAL, TREINOS, TREINO_DE_HOJE } from '@/dados/exemplo';
+import { textoQuando, useDadosAluno } from '@/lib/dados';
 
-// Aba "Treinar": primeiro os treinos do plano (qualquer um pode ser iniciado a qualquer hora),
-// depois "Por conta própria" com todas as modalidades, nenhuma escondida.
-
-function textoUltimo(dias?: number) {
-  if (dias === undefined) return 'ainda não feito';
-  if (dias === 0) return 'feito hoje';
-  if (dias === 1) return 'feito ontem';
-  return `feito há ${dias} dias`;
-}
+// Aba "Treinar": os treinos do plano (qualquer um pode ser iniciado a qualquer hora)
+// e "Por conta própria" com todas as modalidades, nenhuma escondida.
 
 export default function Treinar() {
+  const dados = useDadosAluno();
+
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
-      <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={estilos.conteudo}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={dados.recarregar} tintColor={Cores.verde} />}>
         <Texto variante="titulo" style={{ paddingTop: Espaco.sm }}>
           Treinar
         </Texto>
@@ -28,38 +26,47 @@ export default function Treinar() {
         <View style={{ gap: Espaco.sm }}>
           <View style={estilos.cabecalhoSecao}>
             <Texto variante="rotulo">MEUS TREINOS</Texto>
-            <Texto variante="legenda">por {PERSONAL.nome}</Texto>
+            {dados.plano && <Texto variante="legenda">por {dados.plano.personalNome}</Texto>}
           </View>
 
-          {TREINOS.map((t) => {
-            const hoje = t.letra === TREINO_DE_HOJE;
-            return (
-              <Pressable
-                key={t.letra}
-                accessibilityRole="button"
-                accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
-                onPress={() => router.push(`/treino/${t.letra}`)}
-                style={({ pressed }) => [estilos.linhaTreino, hoje && estilos.linhaHoje, pressed && { opacity: 0.8 }]}>
-                <Texto variante="display" cor={hoje ? Cores.verde : Cores.texto} style={estilos.letra}>
-                  {t.letra}
-                </Texto>
-                <View style={{ flex: 1, gap: 2 }}>
-                  {hoje && (
-                    <Texto variante="rotulo" cor={Cores.verde}>
-                      HOJE
+          {dados.carregando ? (
+            <ActivityIndicator color={Cores.verde} style={{ paddingVertical: Espaco.xl }} />
+          ) : !dados.plano ? (
+            <View style={estilos.vazio}>
+              <Texto variante="corpo">Seu personal ainda não montou seu treino.</Texto>
+              <Texto variante="legenda">Quando ele montar, os treinos A, B, C aparecem aqui.</Texto>
+            </View>
+          ) : (
+            dados.plano.treinos.map((t) => {
+              const hoje = t.id === dados.treinoDeHoje?.id;
+              return (
+                <Pressable
+                  key={t.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
+                  onPress={() => router.push(`/treino/${t.id}`)}
+                  style={({ pressed }) => [estilos.linhaTreino, hoje && estilos.linhaHoje, pressed && { opacity: 0.8 }]}>
+                  <Texto variante="display" cor={hoje ? Cores.verde : Cores.texto} style={estilos.letra}>
+                    {t.letra}
+                  </Texto>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    {hoje && (
+                      <Texto variante="rotulo" cor={Cores.verde}>
+                        HOJE
+                      </Texto>
+                    )}
+                    <Texto variante="subtitulo" style={{ fontSize: 20 }}>
+                      {t.nome}
                     </Texto>
-                  )}
-                  <Texto variante="subtitulo" style={{ fontSize: 20 }}>
-                    {t.nome}
-                  </Texto>
-                  <Texto variante="legenda">
-                    {t.exercicios.length} exercícios · {textoUltimo(t.ultimoHaDias)}
-                  </Texto>
-                </View>
-                <IconeSeta cor={Cores.textoApagado} />
-              </Pressable>
-            );
-          })}
+                    <Texto variante="legenda">
+                      {t.exercicios.length} exercícios · último: {textoQuando(t.ultimaVez)}
+                    </Texto>
+                  </View>
+                  <IconeSeta cor={Cores.textoApagado} />
+                </Pressable>
+              );
+            })
+          )}
         </View>
 
         <View style={{ gap: Espaco.sm }}>
@@ -88,45 +95,22 @@ export default function Treinar() {
 }
 
 const estilos = StyleSheet.create({
-  tela: {
-    flex: 1,
-    backgroundColor: Cores.fundo,
-  },
-  conteudo: {
-    paddingHorizontal: Espaco.lg - 4,
-    paddingBottom: Espaco.xl,
-    gap: Espaco.lg,
-  },
-  cabecalhoSecao: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'baseline',
-  },
+  tela: { flex: 1, backgroundColor: Cores.fundo },
+  conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.xl, gap: Espaco.lg },
+  cabecalhoSecao: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  vazio: { backgroundColor: Cores.superficie, borderRadius: Raio.md, padding: Espaco.md, gap: Espaco.xs },
   linhaTreino: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Espaco.md,
     backgroundColor: Cores.superficie,
     borderRadius: Raio.md,
-    paddingVertical: Espaco.md,
-    paddingHorizontal: Espaco.md,
+    padding: Espaco.md,
     minHeight: 88,
   },
-  linhaHoje: {
-    borderWidth: 1.5,
-    borderColor: Cores.verde,
-  },
-  letra: {
-    fontSize: 56,
-    lineHeight: 58,
-    width: 44,
-    textAlign: 'center',
-  },
-  grade: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Espaco.sm,
-  },
+  linhaHoje: { borderWidth: 1.5, borderColor: Cores.verde },
+  letra: { fontSize: 56, lineHeight: 58, width: 44, textAlign: 'center' },
+  grade: { flexDirection: 'row', flexWrap: 'wrap', gap: Espaco.sm },
   bloco: {
     width: '48.5%',
     minHeight: 76,
@@ -137,9 +121,5 @@ const estilos = StyleSheet.create({
     gap: Espaco.sm,
     overflow: 'hidden',
   },
-  faixaCor: {
-    width: 28,
-    height: 5,
-    borderRadius: 3,
-  },
+  faixaCor: { width: 28, height: 5, borderRadius: 3 },
 });

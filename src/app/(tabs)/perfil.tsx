@@ -4,13 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { IconeSeta } from '@/components/icones';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
-import { PERSONAL } from '@/dados/exemplo';
+import { useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 
 // Aba "Perfil". Login, consentimentos e exclusão de conta entram nas Etapas 4 e 14.
 
-const ITENS = [
-  { titulo: 'Meu personal', detalhe: PERSONAL.nome },
+const ITENS_FIXOS = [
   { titulo: 'Privacidade', detalhe: 'quem vê meus treinos' },
   { titulo: 'Relógio e apps', detalhe: 'Apple Saúde, Strava · Fase 2' },
 ];
@@ -22,6 +21,8 @@ function iniciais(nome: string) {
 
 export default function Perfil() {
   const { perfil, sessao, papel, sair } = useSessao();
+  const { plano } = useDadosAluno();
+  const ITENS = [{ titulo: 'Meu personal', detalhe: plano?.personalNome ?? 'nenhum ainda' }, ...ITENS_FIXOS];
   const nome = perfil?.nome || 'Sem nome';
 
   function confirmarSaida() {

@@ -1,0 +1,265 @@
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+
+import type { Modalidade } from '@/constants/theme';
+import { useSessao } from '@/lib/sessao';
+import { supabase } from '@/lib/supabase';
+
+// Dados do aluno vindos do Supabase: plano ativo, treino de hoje, semana, recordes.
+
+export type ExercicioPrescrito = {
+  id: string;
+  exercicioId: string;
+  nome: string;
+  grupo: string;
+  ordem: number;
+  series: number;
+  repsMin: number;
+  repsMax: number;
+  cargaSugeridaKg: number | null;
+  descansoS: number;
+  observacao: string | null;
+};
+
+export type Treino = {
+  id: string;
+  letra: string;
+  nome: string;
+  ordem: number;
+  diasSemana: number[];
+  exercicios: ExercicioPrescrito[];
+  ultimaVez: Date | null;
+};
+
+export type Plano = {
+  id: string;
+  nome: string;
+  observacao: string | null;
+  personalNome: string;
+  treinos: Treino[];
+};
+
+export type DiaSemana = { rotulo: string; data: Date; feitos: Modalidade[]; hoje: boolean };
+
+export type Recorde = { exercicio: string; valorKg: number; quando: Date };
+
+export const META_SEMANAL = 3;
+
+const ROTULOS = ['S', 'T', 'Q', 'Q', 'S', 'S', 'D'];
+
+export function inicioDaSemana(d = new Date()) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  const diaSemana = (x.getDay() + 6) % 7; // segunda = 0
+  x.setDate(x.getDate() - diaSemana);
+  return x;
+}
+
+function mesmoDia(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+export function textoQuando(d: Date | null) {
+  if (!d) return 'ainda não feito';
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const dia = new Date(d);
+  dia.setHours(0, 0, 0, 0);
+  const dias = Math.round((hoje.getTime() - dia.getTime()) / 86400000);
+  if (dias <= 0) return 'hoje';
+  if (dias === 1) return 'ontem';
+  if (dias < 7) return ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][d.getDay()];
+  return `há ${dias} dias`;
+}
+
+export function textoReps(e: { repsMin: number; repsMax: number }) {
+  return e.repsMin === e.repsMax ? `${e.repsMin}` : `${e.repsMin} a ${e.repsMax}`;
+}
+
+export function textoKg(kg: number | null | undefined) {
+  if (kg === null || kg === undefined) return '—';
+  return `${Number(kg).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg`;
+}
+
+// Treino de hoje: o que o personal marcou para hoje; se não marcou dia, o próximo da ordem
+// depois do último feito. O app não sugere troca: o aluno escolhe outro na aba Treinar se quiser.
+export function escolherTreinoDeHoje(treinos: Treino[], hoje = new Date()): Treino | null {
+  if (treinos.length === 0) return null;
+  const marcado = treinos.find((t) => t.diasSemana.includes(hoje.getDay()));
+  if (marcado) return marcado;
+  const feitos = treinos.filter((t) => t.ultimaVez).sort((a, b) => b.ultimaVez!.getTime() - a.ultimaVez!.getTime());
+  if (feitos.length === 0) return treinos[0];
+  const ultimo = feitos[0];
+  const idx = treinos.findIndex((t) => t.id === ultimo.id);
+  return treinos[(idx + 1) % treinos.length];
+}
+
+// Semanas seguidas (contando a atual só se já bateu a meta) com pelo menos META_SEMANAL treinos
+function sequenciaDeSemanas(datas: Date[]) {
+  const porSemana = new Map<number, number>();
+  for (const d of datas) {
+    const k = inicioDaSemana(d).getTime();
+    porSemana.set(k, (porSemana.get(k) ?? 0) + 1);
+  }
+  let semana = inicioDaSemana();
+  let total = 0;
+  if ((porSemana.get(semana.getTime()) ?? 0) >= META_SEMANAL) total++;
+  // semanas anteriores
+  for (;;) {
+    semana = new Date(semana);
+    semana.setDate(semana.getDate() - 7);
+    if ((porSemana.get(semana.getTime()) ?? 0) >= META_SEMANAL) total++;
+    else break;
+  }
+  return total;
+}
+
+type Estado = {
+  carregando: boolean;
+  erro: string | null;
+  plano: Plano | null;
+  treinoDeHoje: Treino | null;
+  semana: DiaSemana[];
+  treinosNaSemana: number;
+  sequencia: number;
+  recordes: Recorde[];
+};
+
+const VAZIO: Estado = {
+  carregando: true,
+  erro: null,
+  plano: null,
+  treinoDeHoje: null,
+  semana: [],
+  treinosNaSemana: 0,
+  sequencia: 0,
+  recordes: [],
+};
+
+export function useDadosAluno() {
+  const { sessao } = useSessao();
+  const [estado, setEstado] = useState<Estado>(VAZIO);
+
+  const carregar = useCallback(async () => {
+    if (!sessao) return;
+    const uid = sessao.user.id;
+    const desde = new Date();
+    desde.setDate(desde.getDate() - 7 * 26);
+
+    const [rPlano, rSessoes, rRecordes] = await Promise.all([
+      supabase
+        .from('planos')
+        .select(
+          `id, nome, observacao,
+           personal:profiles!planos_personal_id_fkey(nome),
+           treinos(id, letra, nome, ordem, dias_semana,
+             treino_exercicios(id, ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
+               exercicio:exercicios(id, nome, grupo)))`,
+        )
+        .eq('aluno_id', uid)
+        .eq('ativo', true)
+        .maybeSingle(),
+      supabase
+        .from('sessoes')
+        .select('treino_id, modalidade, concluida_em')
+        .eq('aluno_id', uid)
+        .eq('status', 'concluida')
+        .gte('concluida_em', desde.toISOString())
+        .order('concluida_em', { ascending: false }),
+      supabase
+        .from('recordes')
+        .select('valor, alcancado_em, exercicio:exercicios(nome)')
+        .eq('aluno_id', uid)
+        .eq('tipo', 'carga_max')
+        .order('alcancado_em', { ascending: false })
+        .limit(10),
+    ]);
+
+    const erro = rPlano.error ?? rSessoes.error ?? rRecordes.error;
+    if (erro) {
+      setEstado({ ...VAZIO, carregando: false, erro: erro.message });
+      return;
+    }
+
+    const sessoes = (rSessoes.data ?? []).map((s) => ({
+      treinoId: s.treino_id as string | null,
+      modalidade: s.modalidade as Modalidade,
+      data: new Date(s.concluida_em as string),
+    }));
+
+    let plano: Plano | null = null;
+    const p = rPlano.data as any;
+    if (p) {
+      const treinos: Treino[] = (p.treinos ?? [])
+        .map((t: any) => ({
+          id: t.id,
+          letra: t.letra,
+          nome: t.nome,
+          ordem: t.ordem,
+          diasSemana: t.dias_semana ?? [],
+          ultimaVez: sessoes.find((s) => s.treinoId === t.id)?.data ?? null,
+          exercicios: (t.treino_exercicios ?? [])
+            .map((te: any) => ({
+              id: te.id,
+              exercicioId: te.exercicio?.id,
+              nome: te.exercicio?.nome ?? '',
+              grupo: te.exercicio?.grupo ?? '',
+              ordem: te.ordem,
+              series: te.series,
+              repsMin: te.reps_min,
+              repsMax: te.reps_max,
+              cargaSugeridaKg: te.carga_sugerida_kg === null ? null : Number(te.carga_sugerida_kg),
+              descansoS: te.descanso_s,
+              observacao: te.observacao,
+            }))
+            .sort((a: ExercicioPrescrito, b: ExercicioPrescrito) => a.ordem - b.ordem),
+        }))
+        .sort((a: Treino, b: Treino) => a.ordem - b.ordem);
+      plano = {
+        id: p.id,
+        nome: p.nome,
+        observacao: p.observacao,
+        personalNome: p.personal?.nome ?? 'seu personal',
+        treinos,
+      };
+    }
+
+    const hoje = new Date();
+    const segunda = inicioDaSemana(hoje);
+    const semana: DiaSemana[] = ROTULOS.map((rotulo, i) => {
+      const data = new Date(segunda);
+      data.setDate(segunda.getDate() + i);
+      const feitos = sessoes
+        .filter((s) => mesmoDia(s.data, data))
+        .sort((a, b) => a.data.getTime() - b.data.getTime())
+        .map((s) => s.modalidade);
+      return { rotulo, data, feitos, hoje: mesmoDia(data, hoje) };
+    });
+
+    const recordes: Recorde[] = (rRecordes.data ?? []).map((r: any) => ({
+      exercicio: r.exercicio?.nome ?? '',
+      valorKg: Number(r.valor),
+      quando: new Date(r.alcancado_em),
+    }));
+
+    setEstado({
+      carregando: false,
+      erro: null,
+      plano,
+      treinoDeHoje: plano ? escolherTreinoDeHoje(plano.treinos, hoje) : null,
+      semana,
+      treinosNaSemana: semana.reduce((t, d) => t + d.feitos.length, 0),
+      sequencia: sequenciaDeSemanas(sessoes.map((s) => s.data)),
+      recordes,
+    });
+  }, [sessao]);
+
+  // Recarrega toda vez que a tela aparece (ex.: voltou de um treino)
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar]),
+  );
+
+  return { ...estado, recarregar: carregar };
+}

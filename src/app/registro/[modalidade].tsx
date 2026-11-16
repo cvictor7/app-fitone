@@ -8,6 +8,8 @@ import { Botao } from '@/components/botao';
 import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Modalidades, Raio, type Modalidade } from '@/constants/theme';
+import { useSessao } from '@/lib/sessao';
+import { supabase } from '@/lib/supabase';
 
 // Registro rápido das modalidades que ainda não têm tela própria (Fase 1).
 // Na Fase 2: Cross e Hyrox ganham timers; Corrida e Bike vêm do relógio.
@@ -21,6 +23,32 @@ export default function RegistroRapido() {
   const [minutos, setMinutos] = useState(45);
   const [sensacao, setSensacao] = useState<number | null>(null);
   const [observacao, setObservacao] = useState('');
+  const [salvando, setSalvando] = useState(false);
+  const { gymId } = useSessao();
+
+  async function salvar() {
+    setSalvando(true);
+    const fim = new Date();
+    const inicio = new Date(fim.getTime() - minutos * 60000);
+    const { error } = await supabase.from('sessoes').insert({
+      gym_id: gymId,
+      modalidade: modalidade in Modalidades ? modalidade : 'livre',
+      origem: 'app',
+      iniciada_em: inicio.toISOString(),
+      concluida_em: fim.toISOString(),
+      duracao_s: minutos * 60,
+      sensacao: sensacao === null ? null : sensacao + 1,
+      observacao: observacao.trim() || null,
+      status: 'concluida',
+    });
+    setSalvando(false);
+    if (error) {
+      Alert.alert('Não deu para salvar', `Confira a internet e tente de novo.\n(${error.message})`);
+      return;
+    }
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    router.back();
+  }
 
   function mudarMinutos(delta: number) {
     Haptics.selectionAsync();
@@ -97,13 +125,10 @@ export default function RegistroRapido() {
 
       <View style={estilos.rodape}>
         <Botao
-          titulo="Salvar treino"
+          titulo={salvando ? 'Salvando...' : 'Salvar treino'}
           cor={info.cor}
-          onPress={() =>
-            Alert.alert('Treino registrado', 'Exemplo: o salvamento de verdade entra junto com o Supabase.', [
-              { text: 'Ok', onPress: () => router.back() },
-            ])
-          }
+          disabled={salvando}
+          onPress={salvar}
         />
       </View>
     </SafeAreaView>

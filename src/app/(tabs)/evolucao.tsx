@@ -3,11 +3,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
-import { RECORDES } from '@/dados/exemplo';
+import { textoKg, textoQuando, useDadosAluno } from '@/lib/dados';
 
 // Aba "Evolução". Gráficos por exercício entram na Etapa 11.
 
 export default function Evolucao() {
+  const { recordes, carregando } = useDadosAluno();
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
       <ScrollView contentContainerStyle={estilos.conteudo}>
@@ -17,15 +18,21 @@ export default function Evolucao() {
 
         <View style={{ gap: Espaco.sm }}>
           <Texto variante="rotulo">ÚLTIMOS RECORDES</Texto>
+          {!carregando && recordes.length === 0 ? (
+            <View style={[estilos.lista, { padding: Espaco.md }]}>
+              <Texto variante="corpo">Nenhum recorde ainda.</Texto>
+              <Texto variante="legenda">Termine um treino de musculação e eles aparecem aqui.</Texto>
+            </View>
+          ) : null}
           <View style={estilos.lista}>
-            {RECORDES.map((r, i) => (
-              <View key={r.exercicio} style={[estilos.linha, i > 0 && estilos.separador]}>
+            {recordes.map((r, i) => (
+              <View key={r.exercicio + r.quando.toISOString()} style={[estilos.linha, i > 0 && estilos.separador]}>
                 <View style={{ flex: 1, gap: 2 }}>
                   <Texto variante="corpo">{r.exercicio}</Texto>
-                  <Texto variante="legenda">{r.quando}</Texto>
+                  <Texto variante="legenda">{textoQuando(r.quando)}</Texto>
                 </View>
                 <Texto variante="numero" cor={Cores.verde} style={{ fontSize: 30, lineHeight: 32 }}>
-                  {r.valor}
+                  {textoKg(r.valorKg)}
                 </Texto>
               </View>
             ))}

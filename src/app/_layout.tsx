@@ -64,7 +64,7 @@ function Navegacao() {
       </Stack.Protected>
       <Stack.Protected guard={temAcademia}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="treino/[letra]" />
+        <Stack.Screen name="treino/[id]" />
         <Stack.Screen name="registro/[modalidade]" />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />

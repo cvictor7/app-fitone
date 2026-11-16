@@ -1,19 +1,29 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Botao } from '@/components/botao';
 import { BarraTopo } from '@/components/barra-topo';
+import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
-import { PERSONAL, buscarTreino, textoCarga, textoReps } from '@/dados/exemplo';
+import { textoKg, textoQuando, textoReps, useDadosAluno } from '@/lib/dados';
 
 // Prévia do treino antes de começar: o que o personal prescreveu, na ordem.
 // O "Começar" abre o modo treino (Etapa 8).
 
 export default function PreviaTreino() {
-  const { letra } = useLocalSearchParams<{ letra: string }>();
-  const treino = buscarTreino(letra ?? '');
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const dados = useDadosAluno();
+  const treino = dados.plano?.treinos.find((t) => t.id === id);
+
+  if (dados.carregando) {
+    return (
+      <SafeAreaView style={estilos.tela}>
+        <BarraTopo />
+        <ActivityIndicator color={Cores.verde} style={{ marginTop: Espaco.xxl }} />
+      </SafeAreaView>
+    );
+  }
 
   if (!treino) {
     return (
@@ -40,11 +50,22 @@ export default function PreviaTreino() {
           <View style={{ flex: 1, gap: 4 }}>
             <Texto variante="subtitulo">{treino.nome}</Texto>
             <Texto variante="legenda">
-              {treino.exercicios.length} exercícios · {totalSeries} séries · cerca de {treino.minutos} min
+              {treino.exercicios.length} exercícios · {totalSeries} séries
             </Texto>
-            <Texto variante="legenda">Prescrito por {PERSONAL.nome}</Texto>
+            <Texto variante="legenda">
+              Por {dados.plano?.personalNome} · último: {textoQuando(treino.ultimaVez)}
+            </Texto>
           </View>
         </View>
+
+        {dados.plano?.observacao ? (
+          <View style={estilos.recado}>
+            <Texto variante="rotulo" cor={Cores.verde}>
+              RECADO DO PERSONAL
+            </Texto>
+            <Texto variante="corpo">{dados.plano.observacao}</Texto>
+          </View>
+        ) : null}
 
         <View style={estilos.lista}>
           {treino.exercicios.map((e, i) => (
@@ -57,13 +78,13 @@ export default function PreviaTreino() {
                   {e.nome}
                 </Texto>
                 <Texto variante="legenda">
-                  {e.series} × {textoReps(e)} · {textoCarga(e.cargaSugeridaKg)} · descanso {e.descansoS} s
+                  {e.series} × {textoReps(e)} · {textoKg(e.cargaSugeridaKg)} · descanso {e.descansoS} s
                 </Texto>
-                {e.observacao && (
+                {e.observacao ? (
                   <Texto variante="legenda" cor={Cores.verde}>
                     {e.observacao}
                   </Texto>
-                )}
+                ) : null}
               </View>
             </View>
           ))}
@@ -81,49 +102,25 @@ export default function PreviaTreino() {
 }
 
 const estilos = StyleSheet.create({
-  tela: {
-    flex: 1,
-    backgroundColor: Cores.fundo,
-  },
-  conteudo: {
-    paddingHorizontal: Espaco.lg - 4,
-    paddingBottom: Espaco.lg,
-    gap: Espaco.lg,
-  },
-  cabecalho: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Espaco.md,
-  },
-  letra: {
-    fontSize: 104,
-    lineHeight: 100,
-  },
-  lista: {
+  tela: { flex: 1, backgroundColor: Cores.fundo },
+  conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.lg, gap: Espaco.lg },
+  cabecalho: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md },
+  letra: { fontSize: 104, lineHeight: 100 },
+  recado: {
     backgroundColor: Cores.superficie,
-    borderRadius: Raio.lg,
-    paddingHorizontal: Espaco.md,
+    borderRadius: Raio.md,
+    borderLeftWidth: 3,
+    borderLeftColor: Cores.verde,
+    padding: Espaco.md,
+    gap: Espaco.xs,
   },
-  exercicio: {
-    flexDirection: 'row',
-    gap: Espaco.md,
-    paddingVertical: Espaco.md,
-    alignItems: 'flex-start',
-  },
-  separador: {
-    borderTopWidth: 1,
-    borderTopColor: Cores.borda,
-  },
-  ordem: {
-    fontSize: 26,
-    lineHeight: 28,
-    width: 24,
-    textAlign: 'center',
-  },
+  lista: { backgroundColor: Cores.superficie, borderRadius: Raio.lg, paddingHorizontal: Espaco.md },
+  exercicio: { flexDirection: 'row', gap: Espaco.md, paddingVertical: Espaco.md, alignItems: 'flex-start' },
+  separador: { borderTopWidth: 1, borderTopColor: Cores.borda },
+  ordem: { fontSize: 26, lineHeight: 28, width: 24, textAlign: 'center' },
   rodape: {
     paddingHorizontal: Espaco.lg - 4,
-    paddingTop: Espaco.sm,
-    paddingBottom: Espaco.sm,
+    paddingVertical: Espaco.sm,
     borderTopWidth: 1,
     borderTopColor: Cores.borda,
     backgroundColor: Cores.fundo,
