@@ -1,4 +1,5 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
@@ -10,17 +11,30 @@ import { Cores, Espaco, ListaModalidades, Modalidades, Raio, type Modalidade } f
 // ETAPA 1 · prévia da identidade no formato da tela "Hoje".
 // Todos os dados são de exemplo; os reais chegam na Etapa 6.
 
-const SEMANA: { dia: string; feito?: Modalidade; hoje?: boolean }[] = [
-  { dia: 'S', feito: 'musculacao' },
-  { dia: 'T', feito: 'hybrid' },
-  { dia: 'Q', feito: 'musculacao' },
-  { dia: 'Q', hoje: true },
-  { dia: 'S' },
-  { dia: 'S' },
-  { dia: 'D' },
+// Treinos do plano do aluno (o personal escolhe o nome; a letra é só a ordem da divisão)
+const TREINOS = [
+  { letra: 'A', nome: 'Peito, ombro e tríceps', exercicios: 8, minutos: 60 },
+  { letra: 'B', nome: 'Costas e bíceps', exercicios: 7, minutos: 55 },
+  { letra: 'C', nome: 'Pernas completo', exercicios: 7, minutos: 65 },
+];
+
+// Um dia pode ter mais de um treino (ex.: musculação de manhã e Hyrox à tarde)
+const SEMANA: { dia: string; feitos: Modalidade[]; hoje?: boolean }[] = [
+  { dia: 'S', feitos: ['musculacao'] },
+  { dia: 'T', feitos: ['musculacao', 'hyrox'] },
+  { dia: 'Q', feitos: ['hybrid'] },
+  { dia: 'Q', feitos: [], hoje: true },
+  { dia: 'S', feitos: [] },
+  { dia: 'S', feitos: [] },
+  { dia: 'D', feitos: [] },
 ];
 
 export default function Hoje() {
+  // Sugestão = o treino que está há mais tempo sem ser feito. O aluno pode trocar por qualquer outro.
+  const sugerido = 'C';
+  const [escolhido, setEscolhido] = useState(sugerido);
+  const treino = TREINOS.find((t) => t.letra === escolhido)!;
+
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
       <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
@@ -36,14 +50,34 @@ export default function Hoje() {
           <View style={estilos.treinoTopo}>
             <View style={{ flex: 1, gap: Espaco.xs }}>
               <Texto variante="rotulo" cor={Cores.verde}>
-                TREINO DO DIA · PRESCRITO
+                {escolhido === sugerido ? 'SUGERIDO PARA HOJE' : 'VOCÊ TROCOU O TREINO'}
               </Texto>
-              <Texto variante="subtitulo">Costas e bíceps</Texto>
-              <Texto variante="legenda">7 exercícios · cerca de 55 min</Texto>
+              <Texto variante="subtitulo">{treino.nome}</Texto>
+              <Texto variante="legenda">
+                {treino.exercicios} exercícios · cerca de {treino.minutos} min
+              </Texto>
             </View>
             <Texto variante="display" cor={Cores.verde} style={estilos.letra}>
-              B
+              {treino.letra}
             </Texto>
+          </View>
+          <View style={estilos.trocar}>
+            <Texto variante="legenda">Aparelho lotado? Troque:</Texto>
+            {TREINOS.map((t) => {
+              const ativo = t.letra === escolhido;
+              return (
+                <Pressable
+                  key={t.letra}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
+                  onPress={() => setEscolhido(t.letra)}
+                  style={[estilos.letraBotao, ativo && estilos.letraBotaoAtivo]}>
+                  <Texto variante="subtitulo" cor={ativo ? Cores.preto : Cores.texto}>
+                    {t.letra}
+                  </Texto>
+                </Pressable>
+              );
+            })}
           </View>
           <Botao titulo="Começar treino" />
         </View>
@@ -65,19 +99,22 @@ export default function Hoje() {
         </View>
 
         <View style={{ gap: Espaco.sm }}>
-          <Texto variante="rotulo">ESTA SEMANA · 3 DE 4</Texto>
+          <Texto variante="rotulo">ESTA SEMANA · 4 TREINOS EM 3 DIAS</Texto>
           <View style={estilos.semana}>
             {SEMANA.map((d, i) => {
-              const cor = d.feito ? Modalidades[d.feito].cor : undefined;
               return (
                 <View key={i} style={estilos.diaColuna}>
                   <View
                     style={[
                       estilos.dia,
-                      cor && { backgroundColor: cor, borderColor: cor },
+                      d.feitos.length > 0 && { borderColor: Modalidades[d.feitos[0]].cor },
                       d.hoje && { borderColor: Cores.branco },
-                    ]}
-                  />
+                    ]}>
+                    {/* dois treinos no dia = bolinha dividida com as duas cores */}
+                    {d.feitos.map((m, j) => (
+                      <View key={j} style={{ flex: 1, backgroundColor: Modalidades[m].cor }} />
+                    ))}
+                  </View>
                   <Texto variante="legenda" cor={d.hoje ? Cores.branco : Cores.textoApagado}>
                     {d.dia}
                   </Texto>
@@ -166,6 +203,27 @@ const estilos = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 2,
     borderColor: Cores.borda,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  trocar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Espaco.sm,
+  },
+  letraBotao: {
+    width: 44,
+    height: 44,
+    borderRadius: Raio.sm,
+    borderWidth: 1.5,
+    borderColor: Cores.borda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  letraBotaoAtivo: {
+    backgroundColor: Cores.verde,
+    borderColor: Cores.verde,
   },
   chips: {
     flexDirection: 'row',
