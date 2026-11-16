@@ -16,7 +16,7 @@ function traduzir(msg: string) {
   if (msg.includes('academia não encontrado')) return 'Código da academia não encontrado. Peça na recepção.';
   if (msg.includes('inválido ou vencido')) return 'Código do personal inválido ou vencido. Peça um novo para ele.';
   if (msg.includes('é seu')) return 'Esse código é seu.';
-  return 'Não deu certo agora. Confira a internet e tente de novo.';
+  return `Não deu certo agora.\n(${msg})`;
 }
 
 export default function Academia() {

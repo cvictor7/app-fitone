@@ -38,9 +38,11 @@ export default function Cadastro() {
     ];
     const r2 = await supabase.from('consentimentos').insert(consentimentos);
 
-    if (r1.error || r2.error) {
+    const falha = r1.error ?? r2.error;
+    if (falha) {
       setSalvando(false);
-      return setErro('Não deu para salvar. Confira a internet e tente de novo.');
+      // Mostra o detalhe técnico pequeno embaixo, para achar o problema rápido
+      return setErro(`Não deu para salvar.\n(${falha.code ?? ''} ${falha.message})`);
     }
     await recarregar();
     setSalvando(false);
