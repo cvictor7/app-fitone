@@ -1,4 +1,4 @@
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -6,33 +6,18 @@ import { Botao } from '@/components/botao';
 import { ChipModalidade } from '@/components/chip-modalidade';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
-import { Cores, Espaco, ListaModalidades, Modalidades, Raio, type Modalidade } from '@/constants/theme';
+import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
+import { RECORDES, SEMANA, TREINO_DE_HOJE, buscarTreino } from '@/dados/exemplo';
 
-// ETAPA 1 · prévia da identidade no formato da tela "Hoje".
-// Todos os dados são de exemplo; os reais chegam na Etapa 6.
-
-// Treinos do plano do aluno (o personal escolhe o nome; a letra é só a ordem da divisão)
-const TREINOS = [
-  { letra: 'A', nome: 'Peito, ombro e tríceps', exercicios: 8, minutos: 60 },
-  { letra: 'B', nome: 'Costas e bíceps', exercicios: 7, minutos: 55 },
-  { letra: 'C', nome: 'Pernas completo', exercicios: 7, minutos: 65 },
-];
-
-// Um dia pode ter mais de um treino (ex.: musculação de manhã e Hyrox à tarde)
-const SEMANA: { dia: string; feitos: Modalidade[]; hoje?: boolean }[] = [
-  { dia: 'S', feitos: ['musculacao'] },
-  { dia: 'T', feitos: ['musculacao', 'hyrox'] },
-  { dia: 'Q', feitos: ['hybrid'] },
-  { dia: 'Q', feitos: [], hoje: true },
-  { dia: 'S', feitos: [] },
-  { dia: 'S', feitos: [] },
-  { dia: 'D', feitos: [] },
-];
+// Tela "Hoje". Dados de exemplo até o Supabase entrar (Etapa 6 troca pelos reais).
+// Mostra o treino que o plano manda hoje. O app não sugere troca:
+// para fazer outro, o aluno abre "Ver todos os meus treinos" (aba Treinar).
 
 export default function Hoje() {
-  // Treino de hoje = o que está no plano para hoje. O app não sugere troca:
-  // se quiser fazer outro, o aluno abre "Meus treinos" (aba Treinar, Etapa 2) e começa qualquer um.
-  const treino = TREINOS[0];
+  const treino = buscarTreino(TREINO_DE_HOJE)!;
+  const recorde = RECORDES[0];
+  const treinosNaSemana = SEMANA.reduce((total, d) => total + d.feitos.length, 0);
+  const diasComTreino = SEMANA.filter((d) => d.feitos.length > 0).length;
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
@@ -44,7 +29,7 @@ export default function Hoje() {
 
         <Texto variante="titulo">Bora, Victor</Texto>
 
-        {/* Treino do dia: a letra gigante é o elemento marcante, como o "1" dentro do ONE do logo */}
+        {/* Treino de hoje: a letra gigante é o elemento marcante, como o "1" dentro do ONE do logo */}
         <View style={estilos.treinoDia}>
           <View style={estilos.treinoTopo}>
             <View style={{ flex: 1, gap: Espaco.xs }}>
@@ -53,15 +38,15 @@ export default function Hoje() {
               </Texto>
               <Texto variante="subtitulo">{treino.nome}</Texto>
               <Texto variante="legenda">
-                {treino.exercicios} exercícios · cerca de {treino.minutos} min
+                {treino.exercicios.length} exercícios · cerca de {treino.minutos} min
               </Texto>
             </View>
             <Texto variante="display" cor={Cores.verde} style={estilos.letra}>
               {treino.letra}
             </Texto>
           </View>
-          <Botao titulo="Começar treino" />
-          <Link href="/" style={estilos.linkTreinos}>
+          <Botao titulo="Começar treino" onPress={() => router.push(`/treino/${treino.letra}`)} />
+          <Link href="/treinar" style={estilos.linkTreinos}>
             <Texto variante="corpo" cor={Cores.textoSecundario}>
               Ver todos os meus treinos →
             </Texto>
@@ -77,36 +62,36 @@ export default function Hoje() {
           </View>
           <View style={estilos.divisor} />
           <View style={estilos.numeroBloco}>
-            <Texto variante="numero">
-              82,5<Texto variante="subtitulo" style={{ textTransform: 'none' }}> kg</Texto>
+            <Texto variante="numero">{recorde.valor.replace(' kg', '')}<Texto variante="subtitulo" style={{ textTransform: 'none' }}> kg</Texto></Texto>
+            <Texto variante="legenda">
+              recorde no {recorde.exercicio.toLowerCase()}, {recorde.quando}
             </Texto>
-            <Texto variante="legenda">recorde no supino reto, terça</Texto>
           </View>
         </View>
 
         <View style={{ gap: Espaco.sm }}>
-          <Texto variante="rotulo">ESTA SEMANA · 4 TREINOS EM 3 DIAS</Texto>
+          <Texto variante="rotulo">
+            ESTA SEMANA · {treinosNaSemana} TREINOS EM {diasComTreino} DIAS
+          </Texto>
           <View style={estilos.semana}>
-            {SEMANA.map((d, i) => {
-              return (
-                <View key={i} style={estilos.diaColuna}>
-                  <View
-                    style={[
-                      estilos.dia,
-                      d.feitos.length > 0 && { borderColor: Modalidades[d.feitos[0]].cor },
-                      d.hoje && { borderColor: Cores.branco },
-                    ]}>
-                    {/* dois treinos no dia = bolinha dividida com as duas cores */}
-                    {d.feitos.map((m, j) => (
-                      <View key={j} style={{ flex: 1, backgroundColor: Modalidades[m].cor }} />
-                    ))}
-                  </View>
-                  <Texto variante="legenda" cor={d.hoje ? Cores.branco : Cores.textoApagado}>
-                    {d.dia}
-                  </Texto>
+            {SEMANA.map((d, i) => (
+              <View key={i} style={estilos.diaColuna}>
+                <View
+                  style={[
+                    estilos.dia,
+                    d.feitos.length > 0 && { borderColor: Modalidades[d.feitos[0]].cor },
+                    d.hoje && { borderColor: Cores.branco },
+                  ]}>
+                  {/* dois treinos no dia = bolinha dividida com as duas cores */}
+                  {d.feitos.map((m, j) => (
+                    <View key={j} style={{ flex: 1, backgroundColor: Modalidades[m].cor }} />
+                  ))}
                 </View>
-              );
-            })}
+                <Texto variante="legenda" cor={d.hoje ? Cores.branco : Cores.textoApagado}>
+                  {d.dia}
+                </Texto>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -114,14 +99,10 @@ export default function Hoje() {
           <Texto variante="rotulo">POR CONTA PRÓPRIA</Texto>
           <View style={estilos.chips}>
             {ListaModalidades.filter((m) => m !== 'musculacao').map((m) => (
-              <ChipModalidade key={m} modalidade={m} />
+              <ChipModalidade key={m} modalidade={m} onPress={() => router.push(`/registro/${m}`)} />
             ))}
           </View>
         </View>
-
-        <Texto variante="legenda" style={estilos.aviso}>
-          Prévia da identidade · dados de exemplo
-        </Texto>
       </ScrollView>
     </SafeAreaView>
   );
@@ -134,7 +115,7 @@ const estilos = StyleSheet.create({
   },
   conteudo: {
     paddingHorizontal: Espaco.lg - 4,
-    paddingBottom: Espaco.xxl,
+    paddingBottom: Espaco.xl,
     gap: Espaco.lg,
   },
   topo: {
@@ -161,6 +142,10 @@ const estilos = StyleSheet.create({
     lineHeight: 110,
     marginTop: -8,
     marginRight: -4,
+  },
+  linkTreinos: {
+    alignSelf: 'center',
+    paddingVertical: Espaco.xs,
   },
   linhaNumeros: {
     flexDirection: 'row',
@@ -196,13 +181,5 @@ const estilos = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Espaco.sm,
-  },
-  linkTreinos: {
-    alignSelf: 'center',
-    paddingVertical: Espaco.xs,
-  },
-  aviso: {
-    textAlign: 'center',
-    color: Cores.textoApagado,
   },
 });
