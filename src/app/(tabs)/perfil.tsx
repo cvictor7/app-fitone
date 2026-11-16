@@ -25,7 +25,7 @@ export default function Perfil() {
   const nome = perfil?.nome || 'Sem nome';
 
   function confirmarSaida() {
-    Alert.alert('Sair da conta?', 'Para entrar de novo você vai receber um código no e-mail.', [
+    Alert.alert('Sair da conta?', 'Para entrar de novo, use seu e-mail e senha.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: sair },
     ]);
