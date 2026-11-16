@@ -5,7 +5,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
-import { IconeVoltar } from '@/components/icones';
+import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Modalidades, Raio, type Modalidade } from '@/constants/theme';
 
@@ -29,11 +29,7 @@ export default function RegistroRapido() {
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <View style={estilos.barraTopo}>
-        <Pressable accessibilityLabel="Voltar" onPress={() => router.back()} hitSlop={12} style={estilos.voltar}>
-          <IconeVoltar cor={Cores.texto} />
-        </Pressable>
-      </View>
+      <BarraTopo />
 
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
         <View style={{ gap: Espaco.sm }}>
@@ -116,8 +112,6 @@ export default function RegistroRapido() {
 
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
-  barraTopo: { paddingHorizontal: Espaco.md, paddingVertical: Espaco.sm },
-  voltar: { width: 44, height: 44, justifyContent: 'center' },
   conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.lg, gap: Espaco.xl },
   faixa: { width: 40, height: 6, borderRadius: 3 },
   contador: {

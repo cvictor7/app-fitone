@@ -1,7 +1,7 @@
-import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco } from '@/constants/theme';
 
@@ -37,14 +37,7 @@ const SECOES = [
 export default function Privacidade() {
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <View style={estilos.topo}>
-        <Texto variante="subtitulo">Privacidade</Texto>
-        <Pressable onPress={() => router.back()} hitSlop={12}>
-          <Texto variante="corpo" cor={Cores.verde}>
-            Fechar
-          </Texto>
-        </Pressable>
-      </View>
+      <BarraTopo titulo="Privacidade" />
       <ScrollView contentContainerStyle={estilos.conteudo}>
         {SECOES.map((s) => (
           <View key={s.titulo} style={{ gap: Espaco.xs }}>
@@ -64,14 +57,5 @@ export default function Privacidade() {
 
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
-  topo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Espaco.lg,
-    paddingVertical: Espaco.md,
-    borderBottomWidth: 1,
-    borderBottomColor: Cores.borda,
-  },
   conteudo: { padding: Espaco.lg, gap: Espaco.lg },
 });

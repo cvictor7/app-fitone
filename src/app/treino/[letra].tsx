@@ -1,9 +1,9 @@
-import { router, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
-import { IconeVoltar } from '@/components/icones';
+import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import { PERSONAL, buscarTreino, textoCarga, textoReps } from '@/dados/exemplo';
@@ -18,6 +18,7 @@ export default function PreviaTreino() {
   if (!treino) {
     return (
       <SafeAreaView style={estilos.tela}>
+        <BarraTopo />
         <Texto variante="corpo" style={{ padding: Espaco.lg }}>
           Treino não encontrado.
         </Texto>
@@ -29,16 +30,7 @@ export default function PreviaTreino() {
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <View style={estilos.barraTopo}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={estilos.voltar}>
-          <IconeVoltar cor={Cores.texto} />
-        </Pressable>
-      </View>
+      <BarraTopo />
 
       <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
         <View style={estilos.cabecalho}>
@@ -92,15 +84,6 @@ const estilos = StyleSheet.create({
   tela: {
     flex: 1,
     backgroundColor: Cores.fundo,
-  },
-  barraTopo: {
-    paddingHorizontal: Espaco.md,
-    paddingVertical: Espaco.sm,
-  },
-  voltar: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
   },
   conteudo: {
     paddingHorizontal: Espaco.lg - 4,

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Campo } from '@/components/campo';
 import { Logo } from '@/components/logo';
@@ -20,7 +21,7 @@ function traduzir(msg: string) {
 }
 
 export default function Academia() {
-  const { perfil, recarregar } = useSessao();
+  const { perfil, recarregar, sair } = useSessao();
   const [codigoAcademia, setCodigoAcademia] = useState('');
   const [codigoPersonal, setCodigoPersonal] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -52,6 +53,7 @@ export default function Academia() {
 
   return (
     <SafeAreaView style={estilos.tela}>
+      <BarraTopo aoVoltar={sair} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
           <Logo largura={140} comCidade={false} />

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { CaixaMarcar } from '@/components/caixa-marcar';
 import { Campo } from '@/components/campo';
@@ -50,6 +51,7 @@ export default function Cadastro() {
 
   return (
     <SafeAreaView style={estilos.tela}>
+      <BarraTopo aoVoltar={sair} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
           <View style={{ gap: Espaco.sm }}>
