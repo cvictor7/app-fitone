@@ -26,6 +26,7 @@ export type ExercicioAtivo = {
   descansoS: number;
   observacao: string | null;
   midiaUrl: string | null;
+  instrucoes?: string | null;
   anterior: { kg: number | null; reps: number | null }[]; // séries do último treino com esse exercício
   series: SerieAtiva[];
 };
@@ -128,6 +129,7 @@ export async function montarTreinoAtivo(treino: Treino, gymId: string | null): P
         descansoS: e.descansoS,
         observacao: e.observacao,
         midiaUrl: e.midiaUrl,
+        instrucoes: e.instrucoes,
         anterior: ant,
         // Já vem preenchido: carga da última vez (ou a sugerida pelo personal) e reps máximas
         series: Array.from({ length: e.series }, (_, i) => ({

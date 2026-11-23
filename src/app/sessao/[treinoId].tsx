@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
+import { VideoExercicio } from '@/components/video-exercicio';
 import { Cores, Espaco, Fontes, Raio } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
 import { agendarFimDescanso, cancelarAvisoDescanso, pedirPermissaoAviso } from '@/lib/descanso';
@@ -63,6 +63,7 @@ export default function ModoTreino() {
   const [descansoFim, setDescansoFim] = useState<number | null>(null);
   const [descansoTotal, setDescansoTotal] = useState(0);
   const [salvando, setSalvando] = useState(false);
+  const [verVideo, setVerVideo] = useState(false);
   const iniciou = useRef(false);
   const faixa = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -399,10 +400,10 @@ export default function ModoTreino() {
                 {ex.observacao}
               </Texto>
             ) : null}
-            {ex.midiaUrl ? (
-              <Pressable onPress={() => Linking.openURL(ex.midiaUrl!)} style={estilos.botaoVideo}>
+            {ex.midiaUrl || ex.instrucoes ? (
+              <Pressable onPress={() => setVerVideo(true)} style={estilos.botaoVideo}>
                 <Texto variante="corpo" style={{ fontFamily: Fontes.textoSemi }}>
-                  ▶ Ver vídeo do exercício
+                  {ex.midiaUrl ? '▶ Ver vídeo do exercício' : 'Como fazer'}
                 </Texto>
               </Pressable>
             ) : null}
@@ -539,6 +540,14 @@ export default function ModoTreino() {
           </View>
         </View>
       ) : null}
+
+      <VideoExercicio
+        visivel={verVideo}
+        aoFechar={() => setVerVideo(false)}
+        nome={ex.nome}
+        url={ex.midiaUrl}
+        instrucoes={ex.instrucoes}
+      />
 
       <View style={estilos.rodape}>
         {tituloBotao ? <Botao titulo={tituloBotao} onPress={acaoBotao} disabled={salvando} /> : null}

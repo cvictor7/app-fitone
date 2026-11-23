@@ -19,6 +19,7 @@ export const Cores = {
   textoApagado: '#6B706B',
 
   perigo: '#FF5E7A',
+  amarelo: '#FFC83D',
 } as const;
 
 export type Modalidade =
