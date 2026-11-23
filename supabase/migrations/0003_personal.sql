@@ -37,22 +37,26 @@ create policy "personal edita exercicio da academia" on public.exercicios for up
 -- Armazenamento dos vídeos: pasta = id da academia
 -- Leitura pública pelo link (o link é longo e aleatório); envio só por personal da academia.
 -- =====================================================================
-insert into storage.buckets (id, name, public)
-values ('videos-exercicios', 'videos-exercicios', true)
-on conflict (id) do nothing;
+-- Se o Supabase não deixar criar as regras daqui (erro "must be owner"), o resto do arquivo roda
+-- normalmente e as regras do armazenamento são feitas pelo painel (Storage → Policies).
+do $$
+begin
+  insert into storage.buckets (id, name, public)
+  values ('videos-exercicios', 'videos-exercicios', true)
+  on conflict (id) do nothing;
 
-drop policy if exists "personal envia video" on storage.objects;
-create policy "personal envia video" on storage.objects for insert to authenticated
-  with check (
-    bucket_id = 'videos-exercicios'
-    and public.e_personal_na(((storage.foldername(name))[1])::uuid)
-  );
-drop policy if exists "personal troca video" on storage.objects;
-create policy "personal troca video" on storage.objects for update to authenticated
-  using (bucket_id = 'videos-exercicios' and public.e_personal_na(((storage.foldername(name))[1])::uuid));
-drop policy if exists "personal apaga video" on storage.objects;
-create policy "personal apaga video" on storage.objects for delete to authenticated
-  using (bucket_id = 'videos-exercicios' and public.e_personal_na(((storage.foldername(name))[1])::uuid));
+  execute 'drop policy if exists "personal envia video" on storage.objects';
+  execute $p$create policy "personal envia video" on storage.objects for insert to authenticated
+    with check (bucket_id = 'videos-exercicios' and public.e_personal_na(((storage.foldername(name))[1])::uuid))$p$;
+  execute 'drop policy if exists "personal troca video" on storage.objects';
+  execute $p$create policy "personal troca video" on storage.objects for update to authenticated
+    using (bucket_id = 'videos-exercicios' and public.e_personal_na(((storage.foldername(name))[1])::uuid))$p$;
+  execute 'drop policy if exists "personal apaga video" on storage.objects';
+  execute $p$create policy "personal apaga video" on storage.objects for delete to authenticated
+    using (bucket_id = 'videos-exercicios' and public.e_personal_na(((storage.foldername(name))[1])::uuid))$p$;
+exception when others then
+  raise notice 'Armazenamento de vídeos não configurado por aqui (%). Fazer pelo painel.', sqlerrm;
+end $$;
 
 -- =====================================================================
 -- Copiar plano (modelo → aluno, ou plano de um aluno → outro)
@@ -154,3 +158,5 @@ $$;
 
 revoke execute on function public.resumo_alunos() from public, anon;
 grant execute on function public.resumo_alunos() to authenticated;
+
+notify pgrst, 'reload schema';

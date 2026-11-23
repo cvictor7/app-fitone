@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
+import { ListaExercicios } from '@/components/lista-exercicios';
 import { VideoExercicio } from '@/components/video-exercicio';
 import { Cores, Espaco, Fontes, Raio } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
@@ -64,6 +65,7 @@ export default function ModoTreino() {
   const [descansoTotal, setDescansoTotal] = useState(0);
   const [salvando, setSalvando] = useState(false);
   const [verVideo, setVerVideo] = useState(false);
+  const [verLista, setVerLista] = useState(false);
   const iniciou = useRef(false);
   const faixa = useRef<ComponentRef<typeof ScrollView>>(null);
 
@@ -155,7 +157,7 @@ export default function ModoTreino() {
   function irPara(i: number) {
     Haptics.selectionAsync();
     atualizar((t) => ({ ...t, atual: i }));
-    faixa.current?.scrollTo({ x: Math.max(0, i * 54 - 120), animated: true });
+    faixa.current?.scrollTo({ x: Math.max(0, 90 + i * 54 - 120), animated: true });
   }
 
   function iniciarDescanso(segundos: number, textoProximo: string) {
@@ -358,6 +360,11 @@ export default function ModoTreino() {
         showsHorizontalScrollIndicator={false}
         style={{ flexGrow: 0 }}
         contentContainerStyle={estilos.faixa}>
+        <Pressable accessibilityLabel="Ver lista de exercícios" onPress={() => setVerLista(true)} style={[estilos.chip, estilos.chipLista]}>
+          <Texto variante="subtitulo" style={{ fontSize: 16 }}>
+            ☰ Lista
+          </Texto>
+        </Pressable>
         {treino.exercicios.map((e, i) => {
           const completo = exercicioCompleto(e);
           const atual = i === treino.atual;
@@ -541,6 +548,14 @@ export default function ModoTreino() {
         </View>
       ) : null}
 
+      <ListaExercicios
+        visivel={verLista}
+        exercicios={treino.exercicios}
+        atual={treino.atual}
+        aoFechar={() => setVerLista(false)}
+        aoEscolher={irPara}
+      />
+
       <VideoExercicio
         visivel={verVideo}
         aoFechar={() => setVerVideo(false)}
@@ -577,6 +592,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  chipLista: { width: 'auto', paddingHorizontal: 12 },
   chipFeito: { backgroundColor: '#1d2b10', borderColor: '#2c4a12' },
   chipAtual: { backgroundColor: Cores.verde, borderColor: Cores.verde },
   progresso: { height: 4, backgroundColor: Cores.superficieAlta, marginHorizontal: Espaco.md, borderRadius: 2, overflow: 'hidden' },
