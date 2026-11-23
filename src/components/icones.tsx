@@ -83,3 +83,13 @@ export function IconeFogo({ cor, tamanho = 22, cheio = false }: Props & { cheio?
     </Svg>
   );
 }
+
+export function IconeTrofeu({ cor, tamanho = 26 }: Props) {
+  return (
+    <Svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none">
+      <Path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" stroke={cor} strokeWidth={2.2} strokeLinejoin="round" />
+      <Path d="M7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5" stroke={cor} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M12 14v3.5M8 20.5h8" stroke={cor} strokeWidth={2.2} strokeLinecap="round" />
+    </Svg>
+  );
+}

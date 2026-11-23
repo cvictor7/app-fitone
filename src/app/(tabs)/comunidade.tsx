@@ -1,10 +1,11 @@
 import * as Haptics from 'expo-haptics';
-import { useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/avatar';
+import { CardDesafio } from '@/components/card-desafio';
 import { CardPublicacao } from '@/components/card-publicacao';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
@@ -17,17 +18,19 @@ import {
   type LinhaRanking,
   type Publicacao,
 } from '@/lib/comunidade';
+import { listarDesafios, type Desafio } from '@/lib/desafios';
 import { useSessao } from '@/lib/sessao';
 
 // Aba "Comunidade": treinos que a galera da Fit One publicou e o ranking da semana.
 
-type Aba = 'feed' | 'ranking';
+type Aba = 'feed' | 'ranking' | 'desafios';
 
 export default function Comunidade() {
   const { gymId } = useSessao();
   const [aba, setAba] = useState<Aba>('feed');
   const [feed, setFeed] = useState<Publicacao[]>([]);
   const [ranking, setRanking] = useState<LinhaRanking[]>([]);
+  const [desafios, setDesafios] = useState<Desafio[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [temMais, setTemMais] = useState(true);
@@ -38,9 +41,10 @@ export default function Comunidade() {
     if (!gymId) return;
     setErro(null);
     try {
-      const [f, r] = await Promise.all([carregarFeed(gymId), carregarRanking(gymId)]);
+      const [f, r, d] = await Promise.all([carregarFeed(gymId), carregarRanking(gymId), listarDesafios(gymId)]);
       setFeed(f);
       setRanking(r);
+      setDesafios(d);
       setTemMais(f.length === POR_PAGINA);
     } catch {
       setErro('Não deu para carregar a comunidade. Puxe para baixo para tentar de novo.');
@@ -114,7 +118,7 @@ export default function Comunidade() {
         Comunidade
       </Texto>
       <View style={estilos.seletor}>
-        {(['feed', 'ranking'] as const).map((a) => (
+        {(['feed', 'ranking', 'desafios'] as const).map((a) => (
           <Pressable
             key={a}
             onPress={() => {
@@ -123,7 +127,7 @@ export default function Comunidade() {
             }}
             style={[estilos.opcao, aba === a && { backgroundColor: Cores.verde }]}>
             <Texto variante="corpo" cor={aba === a ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: 'Archivo_600SemiBold' }}>
-              {a === 'feed' ? 'Treinos' : 'Ranking da semana'}
+              {a === 'feed' ? 'Treinos' : a === 'ranking' ? 'Ranking' : 'Desafios'}
             </Texto>
           </Pressable>
         ))}
@@ -134,7 +138,7 @@ export default function Comunidade() {
         </Texto>
       ) : null}
       {aba === 'ranking' ? (
-        <Texto variante="legenda">Conta os treinos publicados de segunda a domingo. Empate: quem treinou mais minutos.</Texto>
+        <Texto variante="legenda">Ranking da semana: conta os treinos publicados de segunda a domingo. Empate: quem treinou mais minutos.</Texto>
       ) : null}
     </View>
   );
@@ -186,6 +190,24 @@ export default function Comunidade() {
                 {temMais ? ' ' : 'Segure o seu treino para tirar do feed.'}
               </Texto>
             ) : undefined
+          }
+        />
+      ) : aba === 'desafios' ? (
+        <FlatList
+          data={desafios}
+          keyExtractor={(d) => d.id}
+          contentContainerStyle={estilos.conteudo}
+          ListHeaderComponent={cabecalho}
+          refreshControl={refresh}
+          ItemSeparatorComponent={() => <View style={{ height: Espaco.md }} />}
+          renderItem={({ item }) => <CardDesafio d={item} onPress={() => router.push(`/desafio/${item.id}`)} />}
+          ListEmptyComponent={
+            <View style={estilos.vazio}>
+              <Texto variante="subtitulo">Nenhum desafio ainda</Texto>
+              <Texto variante="corpo" cor={Cores.textoSecundario} style={{ textAlign: 'center' }}>
+                Quando um personal da Fit One criar um desafio, ele aparece aqui.
+              </Texto>
+            </View>
           }
         />
       ) : (

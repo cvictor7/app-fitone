@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router/tabs';
 import Svg, { Path, Rect } from 'react-native-svg';
 
-import { IconePerfil, IconeTreinar } from '@/components/icones';
+import { IconePerfil, IconeTreinar, IconeTrofeu } from '@/components/icones';
 import { Cores, Fontes } from '@/constants/theme';
 
 function IconeAlunos({ cor }: { cor: string }) {
@@ -35,6 +35,7 @@ export default function AbasPersonal() {
       <Tabs.Screen name="index" options={{ title: 'Alunos', tabBarIcon: ({ color }) => <IconeAlunos cor={String(color)} /> }} />
       <Tabs.Screen name="modelos" options={{ title: 'Modelos', tabBarIcon: ({ color }) => <IconeModelos cor={String(color)} /> }} />
       <Tabs.Screen name="exercicios" options={{ title: 'Exercícios', tabBarIcon: ({ color }) => <IconeTreinar cor={String(color)} /> }} />
+      <Tabs.Screen name="desafios" options={{ title: 'Desafios', tabBarIcon: ({ color }) => <IconeTrofeu cor={String(color)} /> }} />
       <Tabs.Screen name="perfil" options={{ title: 'Perfil', tabBarIcon: ({ color }) => <IconePerfil cor={String(color)} /> }} />
     </Tabs>
   );
