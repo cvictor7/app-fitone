@@ -7,6 +7,7 @@ import { Avatar } from '@/components/avatar';
 import { Campo } from '@/components/campo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
+import { listarConversas } from '@/lib/chat';
 import { DIAS_SUMIU, diasDesde, gerarConvite, listarAlunos, type AlunoResumo } from '@/lib/personal';
 import { useSessao } from '@/lib/sessao';
 
@@ -32,11 +33,15 @@ export default function Alunos() {
   const [erro, setErro] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [busca, setBusca] = useState('');
+  const [naoLidas, setNaoLidas] = useState<Record<string, number>>({});
 
   const carregar = useCallback(async () => {
     try {
       setErro('');
       setAlunos(await listarAlunos());
+      listarConversas()
+        .then((cs) => setNaoLidas(Object.fromEntries(cs.filter((c) => c.souPersonal).map((c) => [c.outroId, c.naoLidas]))))
+        .catch(() => {});
     } catch (e: any) {
       setErro(e.message);
       setAlunos([]);
@@ -139,7 +144,14 @@ export default function Alunos() {
                   style={({ pressed }) => [estilos.linha, i > 0 && estilos.separador, pressed && { opacity: 0.7 }]}>
                   <Avatar nome={a.nome} />
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Texto variante="corpo">{a.nome}</Texto>
+                    <Texto variante="corpo">
+                      {a.nome}
+                      {naoLidas[a.id] ? (
+                        <Texto variante="legenda" cor={Cores.verde} style={{ fontFamily: 'Archivo_700Bold' }}>
+                          {`  ● ${naoLidas[a.id]} ${naoLidas[a.id] === 1 ? 'mensagem' : 'mensagens'}`}
+                        </Texto>
+                      ) : null}
+                    </Texto>
                     <Texto variante="legenda" cor={s.cor}>
                       {s.texto}
                     </Texto>

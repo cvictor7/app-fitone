@@ -170,6 +170,7 @@ export default function FichaAluno() {
           />
           <Botao titulo="Usar modelo" tipo="secundario" style={{ flex: 1 }} onPress={escolherModelo} />
         </View>
+        <Botao titulo="Mensagem" tipo="secundario" onPress={() => router.push(`/personal/conversa/${id}`)} />
 
         <View style={{ gap: Espaco.sm }}>
           <Texto variante="rotulo">

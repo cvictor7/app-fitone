@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AtalhosConversa } from '@/components/atalhos-conversa';
 import { Botao } from '@/components/botao';
 import { CardFeitoHoje } from '@/components/card-feito-hoje';
 import { ChipModalidade } from '@/components/chip-modalidade';
@@ -48,6 +49,8 @@ export default function Hoje() {
         </View>
 
         <Texto variante="titulo">Bora, {primeiroNome}</Texto>
+
+        <AtalhosConversa soNaoLidas />
 
         {emAndamento ? (
           <Pressable onPress={() => router.push(`/sessao/${emAndamento.treinoId}`)} style={estilos.andamento}>

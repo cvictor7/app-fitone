@@ -7,6 +7,7 @@ import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
 import { resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
 import { rotaPorContaPropria } from '@/lib/dados';
+import { AtalhosConversa } from '@/components/atalhos-conversa';
 import { Botao } from '@/components/botao';
 
 // Aba "Treinar": os treinos do plano (qualquer um pode ser iniciado a qualquer hora)
@@ -24,6 +25,8 @@ export default function Treinar() {
         <Texto variante="titulo" style={{ paddingTop: Espaco.sm }}>
           Treinar
         </Texto>
+
+        <AtalhosConversa />
 
         <View style={{ gap: Espaco.sm }}>
           {dados.plano ? (
