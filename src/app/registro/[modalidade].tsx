@@ -1,3 +1,4 @@
+import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -38,11 +39,15 @@ export default function RegistroRapido() {
     if (treinoDoPlano.descricao) setObservacao(treinoDoPlano.descricao);
   }, [treinoDoPlano]);
 
+  // id criado no celular uma vez só: se o sinal cair e você tocar em Salvar de novo, não duplica
+  const idSessao = useRef(Crypto.randomUUID()).current;
+
   async function salvar() {
     setSalvando(true);
     const fim = new Date();
     const inicio = new Date(fim.getTime() - minutos * 60000);
     const { data, error } = await supabase.from('sessoes').insert({
+      id: idSessao,
       gym_id: gymId,
       modalidade: modalidade in Modalidades ? modalidade : 'livre',
       treino_id: treinoDoPlano?.id ?? null,
@@ -55,6 +60,12 @@ export default function RegistroRapido() {
       status: 'concluida',
     }).select('id').single();
     setSalvando(false);
+    // 23505 = já tinha salvo na tentativa anterior (a resposta é que se perdeu)
+    if (error && error.code === '23505') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      router.replace(`/sessao/concluido/${idSessao}`);
+      return;
+    }
     if (error) {
       Alert.alert('Não deu para salvar', `Confira a internet e tente de novo.\n(${error.message})`);
       return;
