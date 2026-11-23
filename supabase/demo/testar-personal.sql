@@ -13,7 +13,7 @@ declare
 begin
   select id into v_personal from auth.users where lower(email) = lower(v_email_personal);
   select id into v_aluno from auth.users where lower(email) = lower(v_email_aluno);
-  select id into v_gym from public.gyms where codigo_convite = 'FITONE';
+  select id into v_gym from public.gyms where slug = 'fitone';
   if v_personal is null then raise exception 'Conta personal não encontrada (%): crie a conta no app primeiro', v_email_personal; end if;
   if v_aluno is null then raise exception 'Conta de aluno não encontrada (%)', v_email_aluno; end if;
   if v_personal = v_aluno then raise exception 'Use duas contas diferentes'; end if;

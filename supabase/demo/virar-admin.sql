@@ -10,7 +10,7 @@ declare
 begin
   select id into v_user from auth.users where lower(email) = lower(v_email);
   if v_user is null then raise exception 'Conta não encontrada: crie a conta no app primeiro (%)', v_email; end if;
-  select id into v_gym from public.gyms where codigo_convite = 'FITONE';
+  select id into v_gym from public.gyms where slug = 'fitone';
   insert into public.gym_members (gym_id, user_id, papel) values (v_gym, v_user, 'admin')
   on conflict (gym_id, user_id) do update set papel = 'admin', ativo = true;
 end $$;

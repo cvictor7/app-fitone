@@ -11,10 +11,14 @@ import { Cores, Espaco, ListaModalidades, Raio, infoModalidade } from '@/constan
 import {
   apagarAviso,
   carregarPainel,
+  codigoDaAcademia,
   criarAviso,
   definirPapel,
   listarAvisos,
   listarMembros,
+  readmitirMembro,
+  removerMembro,
+  trocarCodigo,
   type Aviso,
   type Membro,
   type Painel,
@@ -70,13 +74,22 @@ export default function PainelAcademia() {
   const [duracao, setDuracao] = useState<number | null>(7);
   const [publicando, setPublicando] = useState(false);
   const [busca, setBusca] = useState('');
+  const [codigo, setCodigo] = useState('');
+  const [codigoNovo, setCodigoNovo] = useState('');
+  const [editandoCodigo, setEditandoCodigo] = useState(false);
 
   const carregar = useCallback(async () => {
     if (!gymId) return;
     try {
       setErro(null);
-      const [p, a, m] = await Promise.all([carregarPainel(gymId), listarAvisos(gymId), listarMembros(gymId)]);
+      const [p, a, m, c] = await Promise.all([
+        carregarPainel(gymId),
+        listarAvisos(gymId),
+        listarMembros(gymId),
+        codigoDaAcademia(gymId),
+      ]);
       setPainel(p);
+      setCodigo(c);
       setAvisos(a);
       setMembros(m);
     } catch {
@@ -125,34 +138,79 @@ export default function PainelAcademia() {
     ]);
   }
 
-  function mudarPapel(m: Membro) {
-    if (m.eu || m.papel === 'admin' || !gymId) return;
-    const novo = m.papel === 'aluno' ? 'personal' : 'aluno';
-    Alert.alert(
-      novo === 'personal' ? `Tornar ${m.nome} personal?` : `Tirar ${m.nome} da equipe?`,
-      novo === 'personal'
-        ? 'Ele passa a ver o lado do personal: alunos, planos, exercícios e desafios. Precisa fechar e abrir o app.'
-        : 'Ele volta a ser aluno. Os alunos dele continuam vinculados até você ajustar.',
-      [
+  async function recarregarMembros() {
+    if (gymId) setMembros(await listarMembros(gymId));
+  }
+
+  async function executar(acao: () => Promise<void>) {
+    try {
+      setErro(null);
+      await acao();
+      await recarregarMembros();
+    } catch (e: any) {
+      setErro(e?.message ?? 'Não deu certo. Tente de novo.');
+    }
+  }
+
+  // Remover: se for personal com alunos, escolhe quem recebe os alunos e os planos
+  function remover(m: Membro) {
+    if (!gymId) return;
+    const confirmar = (para: string | null, texto: string) =>
+      Alert.alert(`Remover ${m.nome} da academia?`, texto, [
         { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar',
-          onPress: async () => {
-            try {
-              await definirPapel(gymId, m.userId, novo);
-              setMembros(await listarMembros(gymId));
-            } catch (e: any) {
-              setErro(e?.message ?? 'Não deu para mudar.');
-            }
-          },
-        },
+        { text: 'Remover', style: 'destructive', onPress: () => executar(() => removerMembro(gymId, m.userId, para)) },
+      ]);
+    const base = 'Perde o acesso a tudo da Fit One e não consegue entrar de novo pelo código. A conta dele não é apagada.';
+    if (m.papel !== 'personal' || m.alunos === 0) return confirmar(null, base);
+    const outros = membros.filter((x) => x.ativo && x.userId !== m.userId && (x.papel === 'personal' || x.papel === 'admin'));
+    Alert.alert(
+      `Quem fica com os ${m.alunos} ${m.alunos === 1 ? 'aluno' : 'alunos'} de ${m.nome.split(' ')[0]}?`,
+      'Os alunos e os planos deles passam para essa pessoa.',
+      [
+        ...outros.slice(0, 6).map((o) => ({
+          text: o.eu ? `${o.nome} (você)` : o.nome,
+          onPress: () => confirmar(o.userId, `${base}\n\nOs alunos vão para ${o.nome}.`),
+        })),
+        { text: 'Ninguém (ficam sem personal)', onPress: () => confirmar(null, `${base}\n\nOs alunos ficam sem personal, mas continuam com o plano.`) },
+        { text: 'Cancelar', style: 'cancel' as const },
       ],
     );
   }
 
+  function opcoes(m: Membro) {
+    if (!gymId || m.eu || m.papel === 'admin') return;
+    if (!m.ativo) {
+      Alert.alert(m.nome, 'Foi removido da academia.', [
+        { text: 'Readmitir como aluno', onPress: () => executar(() => readmitirMembro(gymId, m.userId)) },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+      return;
+    }
+    Alert.alert(m.nome, m.papel === 'personal' ? `Personal · ${m.alunos} ${m.alunos === 1 ? 'aluno' : 'alunos'}` : 'Aluno', [
+      m.papel === 'aluno'
+        ? { text: 'Tornar personal', onPress: () => executar(() => definirPapel(gymId, m.userId, 'personal')) }
+        : { text: 'Voltar a ser aluno', onPress: () => executar(() => definirPapel(gymId, m.userId, 'aluno')) },
+      { text: 'Remover da academia', style: 'destructive', onPress: () => remover(m) },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }
+
+  async function salvarCodigo() {
+    if (!gymId) return;
+    try {
+      setErro(null);
+      setCodigo(await trocarCodigo(gymId, codigoNovo));
+      setCodigoNovo('');
+      setEditandoCodigo(false);
+    } catch (e: any) {
+      setErro(e?.message ?? 'Não deu para trocar.');
+    }
+  }
+
   const visiveis = membros.filter((m) => m.nome.toLowerCase().includes(busca.trim().toLowerCase()));
-  const equipe = visiveis.filter((m) => m.papel !== 'aluno');
-  const alunos = visiveis.filter((m) => m.papel === 'aluno');
+  const equipe = visiveis.filter((m) => m.ativo && m.papel !== 'aluno');
+  const alunos = visiveis.filter((m) => m.ativo && m.papel === 'aluno');
+  const removidos = visiveis.filter((m) => !m.ativo);
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
@@ -261,13 +319,20 @@ export default function PainelAcademia() {
         <View style={{ gap: Espaco.sm }}>
           <Texto variante="rotulo">EQUIPE E ALUNOS</Texto>
           <Campo value={busca} onChangeText={setBusca} placeholder="Buscar pelo nome" />
-          {[...equipe, ...alunos].slice(0, 60).map((m) => (
-            <Pressable key={m.userId} onPress={() => mudarPapel(m)} style={estilos.membro}>
+          {[...equipe, ...alunos].slice(0, 80).map((m) => (
+            <Pressable key={m.userId} onPress={() => opcoes(m)} style={estilos.membro}>
               <Avatar nome={m.nome} tamanho={36} />
-              <Texto variante="corpo" style={{ flex: 1 }} numberOfLines={1}>
-                {m.nome}
-                {m.eu ? ' (você)' : ''}
-              </Texto>
+              <View style={{ flex: 1 }}>
+                <Texto variante="corpo" numberOfLines={1}>
+                  {m.nome}
+                  {m.eu ? ' (você)' : ''}
+                </Texto>
+                {m.papel === 'personal' ? (
+                  <Texto variante="legenda">
+                    {m.alunos} {m.alunos === 1 ? 'aluno' : 'alunos'}
+                  </Texto>
+                ) : null}
+              </View>
               <Texto
                 variante="rotulo"
                 cor={m.papel === 'admin' ? Cores.amarelo : m.papel === 'personal' ? Cores.verde : Cores.textoApagado}>
@@ -275,7 +340,52 @@ export default function PainelAcademia() {
               </Texto>
             </Pressable>
           ))}
-          <Texto variante="legenda">Toque em alguém para tornar personal ou voltar a aluno.</Texto>
+          {removidos.length > 0 ? (
+            <>
+              <Texto variante="rotulo" style={{ marginTop: Espaco.sm }}>
+                REMOVIDOS
+              </Texto>
+              {removidos.map((m) => (
+                <Pressable key={m.userId} onPress={() => opcoes(m)} style={[estilos.membro, { opacity: 0.55 }]}>
+                  <Avatar nome={m.nome} tamanho={36} />
+                  <Texto variante="corpo" style={{ flex: 1 }} numberOfLines={1}>
+                    {m.nome}
+                  </Texto>
+                  <Texto variante="rotulo" cor={Cores.perigo}>
+                    SEM ACESSO
+                  </Texto>
+                </Pressable>
+              ))}
+            </>
+          ) : null}
+          <Texto variante="legenda">Toque em alguém para tornar personal, voltar a aluno ou remover da academia.</Texto>
+        </View>
+
+        <View style={estilos.bloco}>
+          <Texto variante="rotulo">CÓDIGO PARA ENTRAR NA ACADEMIA</Texto>
+          <Texto variante="display" cor={Cores.verde} style={{ fontSize: 44, lineHeight: 46 }}>
+            {codigo || '—'}
+          </Texto>
+          <Texto variante="legenda">
+            Quem tem o código entra como aluno. Se ele vazou, troque: quem já está no app continua normal.
+          </Texto>
+          {editandoCodigo ? (
+            <>
+              <Campo
+                value={codigoNovo}
+                onChangeText={(t) => setCodigoNovo(t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12))}
+                placeholder="Ex.: FITONE26"
+                autoCapitalize="characters"
+                autoCorrect={false}
+              />
+              <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
+                <Botao titulo="Cancelar" tipo="secundario" style={{ flex: 1 }} onPress={() => setEditandoCodigo(false)} />
+                <Botao titulo="Salvar código" style={{ flex: 1 }} disabled={codigoNovo.length < 4} onPress={salvarCodigo} />
+              </View>
+            </>
+          ) : (
+            <Botao titulo="Trocar código" tipo="secundario" onPress={() => setEditandoCodigo(true)} />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>

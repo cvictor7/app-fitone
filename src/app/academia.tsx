@@ -17,6 +17,7 @@ function traduzir(msg: string) {
   if (msg.includes('academia não encontrado')) return 'Código da academia não encontrado. Peça na recepção.';
   if (msg.includes('inválido ou vencido')) return 'Código do personal inválido ou vencido. Peça um novo para ele.';
   if (msg.includes('é seu')) return 'Esse código é seu.';
+  if (msg.includes('acesso a esta academia foi encerrado')) return 'Seu acesso à Fit One foi encerrado. Fale com a recepção.';
   return `Não deu certo agora.\n(${msg})`;
 }
 

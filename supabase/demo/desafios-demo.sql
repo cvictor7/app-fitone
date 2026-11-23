@@ -6,7 +6,7 @@ select g.id, 'Dezembro sem falta', 'Teste: 12 treinos até o fim do ano. Qualque
        (now() at time zone 'America/Manaus')::date,
        make_date(extract(year from now() at time zone 'America/Manaus')::int, 12, 31)
 from public.gyms g
-where g.codigo_convite = 'FITONE'
+where g.slug = 'fitone'
   and not exists (select 1 from public.desafios d where d.gym_id = g.id and d.titulo = 'Dezembro sem falta');
 
 insert into public.desafios (gym_id, titulo, descricao, medida, meta, modalidade, inicio, fim)
@@ -14,7 +14,7 @@ select g.id, '300 min de Hybrid', 'Teste: some 300 minutos de Hybrid em 30 dias.
        (now() at time zone 'America/Manaus')::date,
        (now() at time zone 'America/Manaus')::date + 29
 from public.gyms g
-where g.codigo_convite = 'FITONE'
+where g.slug = 'fitone'
   and not exists (select 1 from public.desafios d where d.gym_id = g.id and d.titulo = '300 min de Hybrid');
 
 -- Para tirar os desafios de teste:

@@ -31,7 +31,7 @@ declare
   v_d1 uuid;
   v_d2 uuid;
 begin
-  select id into v_gym from public.gyms where codigo_convite = 'FITONE';
+  select id into v_gym from public.gyms where slug = 'fitone';
   if v_gym is null then raise exception 'Academia FITONE não encontrada'; end if;
 
   -- recomeça do zero (apaga a demonstração anterior, em cascata)

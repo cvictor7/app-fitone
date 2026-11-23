@@ -11,7 +11,7 @@ declare
 begin
   select id into v_aluno from auth.users where lower(email) = lower(v_email);
   if v_aluno is null then raise exception 'Conta não encontrada: %', v_email; end if;
-  select id into v_gym from public.gyms where codigo_convite = 'FITONE';
+  select id into v_gym from public.gyms where slug = 'fitone';
 
   if not exists (select 1 from auth.users where id = v_personal) then
     insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, created_at, updated_at)

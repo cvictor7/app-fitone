@@ -20,7 +20,15 @@ export type Painel = {
 };
 
 export type Aviso = { id: string; titulo: string; texto: string | null; criadoEm: Date; expiraEm: string | null };
-export type Membro = { userId: string; nome: string; papel: 'aluno' | 'personal' | 'admin'; desde: string; eu: boolean };
+export type Membro = {
+  userId: string;
+  nome: string;
+  papel: 'aluno' | 'personal' | 'admin';
+  desde: string;
+  eu: boolean;
+  ativo: boolean; // false = removido da academia
+  alunos: number; // alunos vinculados (se for personal)
+};
 
 export async function carregarPainel(gymId: string): Promise<Painel> {
   const { data, error } = await supabase.rpc('painel_academia', { p_gym: gymId });
@@ -96,10 +104,40 @@ export async function fecharAviso(id: string) {
 export async function listarMembros(gymId: string): Promise<Membro[]> {
   const { data, error } = await supabase.rpc('membros_academia', { p_gym: gymId });
   if (error) throw error;
-  return ((data ?? []) as any[]).map((m) => ({ userId: m.user_id, nome: m.nome, papel: m.papel, desde: m.desde, eu: !!m.eu }));
+  return ((data ?? []) as any[]).map((m) => ({
+    userId: m.user_id,
+    nome: m.nome,
+    papel: m.papel,
+    desde: m.desde,
+    eu: !!m.eu,
+    ativo: !!m.ativo,
+    alunos: Number(m.alunos ?? 0),
+  }));
 }
 
 export async function definirPapel(gymId: string, userId: string, papel: 'aluno' | 'personal') {
   const { error } = await supabase.rpc('definir_papel', { p_gym: gymId, p_user: userId, p_papel: papel });
   if (error) throw error;
+}
+
+/** Tira da academia (não apaga a conta). Personal: os alunos e planos vão para "para", se vier. */
+export async function removerMembro(gymId: string, userId: string, para: string | null) {
+  const { error } = await supabase.rpc('remover_membro', { p_gym: gymId, p_user: userId, p_para: para });
+  if (error) throw error;
+}
+
+export async function readmitirMembro(gymId: string, userId: string) {
+  const { error } = await supabase.rpc('readmitir_membro', { p_gym: gymId, p_user: userId });
+  if (error) throw error;
+}
+
+export async function codigoDaAcademia(gymId: string): Promise<string> {
+  const { data } = await supabase.from('gyms').select('codigo_convite').eq('id', gymId).maybeSingle();
+  return data?.codigo_convite ?? '';
+}
+
+export async function trocarCodigo(gymId: string, codigo: string): Promise<string> {
+  const { data, error } = await supabase.rpc('trocar_codigo_academia', { p_gym: gymId, p_codigo: codigo });
+  if (error) throw error;
+  return data as string;
 }
