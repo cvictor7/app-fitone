@@ -4,8 +4,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { IconeSeta } from '@/components/icones';
 import { Texto } from '@/components/texto';
-import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
-import { textoQuando, useDadosAluno } from '@/lib/dados';
+import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
+import { resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
+import { Botao } from '@/components/botao';
 
 // Aba "Treinar": os treinos do plano (qualquer um pode ser iniciado a qualquer hora)
 // e "Por conta própria" com todas as modalidades, nenhuma escondida.
@@ -26,32 +27,47 @@ export default function Treinar() {
         <View style={{ gap: Espaco.sm }}>
           <View style={estilos.cabecalhoSecao}>
             <Texto variante="rotulo">MEUS TREINOS</Texto>
-            {dados.plano && <Texto variante="legenda">por {dados.plano.personalNome}</Texto>}
+            {dados.plano ? (
+              dados.plano.proprio ? (
+                <Pressable onPress={() => router.push(`/meu-plano/${dados.plano!.id}`)} hitSlop={8}>
+                  <Texto variante="legenda" cor={Cores.verde}>
+                    Editar meu treino
+                  </Texto>
+                </Pressable>
+              ) : (
+                <Texto variante="legenda">por {dados.plano.personalNome}</Texto>
+              )
+            ) : null}
           </View>
 
           {dados.carregando ? (
             <ActivityIndicator color={Cores.verde} style={{ paddingVertical: Espaco.xl }} />
           ) : !dados.plano ? (
             <View style={estilos.vazio}>
-              <Texto variante="corpo">Seu personal ainda não montou seu treino.</Texto>
-              <Texto variante="legenda">Quando ele montar, os treinos A, B, C aparecem aqui.</Texto>
+              <Texto variante="corpo">Você ainda não tem treino montado.</Texto>
+              <Texto variante="legenda">
+                Se tiver personal, os treinos A, B, C aparecem aqui quando ele montar. Sem personal? Monte o seu: musculação,
+                Cross, corrida, o que quiser.
+              </Texto>
+              <Botao titulo="Montar meu treino" onPress={() => router.push('/meu-plano/novo')} />
             </View>
           ) : (
             dados.plano.treinos.map((t) => {
               const hoje = t.id === dados.treinoDeHoje?.id;
+              const cor = infoModalidade(t.modalidade).cor;
               return (
                 <Pressable
                   key={t.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
                   onPress={() => router.push(`/treino/${t.id}`)}
-                  style={({ pressed }) => [estilos.linhaTreino, hoje && estilos.linhaHoje, pressed && { opacity: 0.8 }]}>
-                  <Texto variante="display" cor={hoje ? Cores.verde : Cores.texto} style={estilos.letra}>
+                  style={({ pressed }) => [estilos.linhaTreino, hoje && { borderWidth: 1.5, borderColor: cor }, pressed && { opacity: 0.8 }]}>
+                  <Texto variante="display" cor={hoje || t.modalidade !== 'musculacao' ? cor : Cores.texto} style={estilos.letra}>
                     {t.letra}
                   </Texto>
                   <View style={{ flex: 1, gap: 2 }}>
                     {hoje && (
-                      <Texto variante="rotulo" cor={Cores.verde}>
+                      <Texto variante="rotulo" cor={cor}>
                         HOJE
                       </Texto>
                     )}
@@ -59,7 +75,7 @@ export default function Treinar() {
                       {t.nome}
                     </Texto>
                     <Texto variante="legenda">
-                      {t.exercicios.length} exercícios · último: {textoQuando(t.ultimaVez)}
+                      {resumoTreino(t, infoModalidade(t.modalidade).nome)} · último: {textoQuando(t.ultimaVez)}
                     </Texto>
                   </View>
                   <IconeSeta cor={Cores.textoApagado} />

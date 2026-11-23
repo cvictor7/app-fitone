@@ -8,7 +8,7 @@ import { ChipModalidade } from '@/components/chip-modalidade';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
-import { META_SEMANAL, textoQuando, useDadosAluno } from '@/lib/dados';
+import { META_SEMANAL, resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 import { lerTreinoAtivo, type TreinoAtivo } from '@/lib/treino-ativo';
 
@@ -84,14 +84,18 @@ export default function Hoje() {
                 </Texto>
                 <Texto variante="subtitulo">{treino.nome}</Texto>
                 <Texto variante="legenda">
-                  {treino.exercicios.length} exercícios · último: {textoQuando(treino.ultimaVez)}
+                  {resumoTreino(treino, infoModalidade(treino.modalidade).nome)} · último: {textoQuando(treino.ultimaVez)}
                 </Texto>
               </View>
-              <Texto variante="display" cor={Cores.verde} style={estilos.letra}>
+              <Texto variante="display" cor={infoModalidade(treino.modalidade).cor} style={estilos.letra}>
                 {treino.letra}
               </Texto>
             </View>
-            <Botao titulo="Começar treino" onPress={() => router.push(`/treino/${treino.id}`)} />
+            <Botao
+              titulo="Começar treino"
+              cor={infoModalidade(treino.modalidade).cor}
+              onPress={() => router.push(`/treino/${treino.id}`)}
+            />
             <Link href="/treinar" style={estilos.linkTreinos}>
               <Texto variante="corpo" cor={Cores.textoSecundario}>
                 Ver todos os meus treinos →
@@ -103,8 +107,9 @@ export default function Hoje() {
             <Texto variante="rotulo" cor={Cores.verde}>
               SEM PLANO AINDA
             </Texto>
-            <Texto variante="subtitulo">Seu personal ainda não montou seu treino</Texto>
-            <Texto variante="legenda">Enquanto isso, dá para treinar por conta própria aqui embaixo.</Texto>
+            <Texto variante="subtitulo">Ainda sem treino montado</Texto>
+            <Texto variante="legenda">Espere seu personal montar ou monte o seu agora. Dá também para treinar por conta própria aqui embaixo.</Texto>
+            <Botao titulo="Montar meu treino" tipo="secundario" onPress={() => router.push('/meu-plano/novo')} />
           </View>
         )}
 

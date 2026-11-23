@@ -27,6 +27,10 @@ export type Treino = {
   id: string;
   letra: string;
   nome: string;
+  modalidade: Modalidade;
+  descricao: string | null; // treinos que não são musculação
+  duracaoMin: number | null;
+  distanciaKm: number | null;
   ordem: number;
   diasSemana: number[];
   exercicios: ExercicioPrescrito[];
@@ -38,6 +42,7 @@ export type Plano = {
   nome: string;
   observacao: string | null;
   personalNome: string;
+  proprio: boolean; // o aluno montou o próprio treino
   treinos: Treino[];
 };
 
@@ -72,6 +77,20 @@ export function textoQuando(d: Date | null) {
   if (dias === 1) return 'ontem';
   if (dias < 7) return ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'][d.getDay()];
   return `há ${dias} dias`;
+}
+
+// Resumo de uma linha do treino: "8 exercícios" na musculação, "Cross · 45 min" nas outras
+export function resumoTreino(t: Treino, nomeModalidade: string) {
+  if (t.modalidade === 'musculacao') return `${t.exercicios.length} exercícios`;
+  const partes = [nomeModalidade];
+  if (t.distanciaKm) partes.push(`${String(t.distanciaKm).replace('.', ',')} km`);
+  if (t.duracaoMin) partes.push(`${t.duracaoMin} min`);
+  return partes.join(' · ');
+}
+
+// Para onde vai o "Começar": musculação abre o modo treino; o resto abre o registro com o treino preenchido
+export function rotaComecar(t: Treino) {
+  return t.modalidade === 'musculacao' ? `/sessao/${t.id}` : `/registro/${t.modalidade}?treino=${t.id}`;
 }
 
 export function textoReps(e: { repsMin: number; repsMax: number }) {
@@ -152,9 +171,9 @@ export function useDadosAluno() {
       supabase
         .from('planos')
         .select(
-          `id, nome, observacao,
+          `id, nome, observacao, personal_id,
            personal:profiles!planos_personal_id_fkey(nome),
-           treinos(id, letra, nome, ordem, dias_semana,
+           treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km,
              treino_exercicios(id, ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
                exercicio:exercicios(id, nome, grupo, midia_url, midias:exercicio_midias(video_url, instrucoes))))`,
         )
@@ -197,6 +216,10 @@ export function useDadosAluno() {
           id: t.id,
           letra: t.letra,
           nome: t.nome,
+          modalidade: (t.modalidade ?? 'musculacao') as Modalidade,
+          descricao: t.descricao ?? null,
+          duracaoMin: t.duracao_min ?? null,
+          distanciaKm: t.distancia_km === null || t.distancia_km === undefined ? null : Number(t.distancia_km),
           ordem: t.ordem,
           diasSemana: t.dias_semana ?? [],
           ultimaVez: sessoes.find((s) => s.treinoId === t.id)?.data ?? null,
@@ -223,7 +246,8 @@ export function useDadosAluno() {
         id: p.id,
         nome: p.nome,
         observacao: p.observacao,
-        personalNome: p.personal?.nome ?? 'seu personal',
+        personalNome: p.personal_id === uid ? 'você' : p.personal?.nome ?? 'seu personal',
+        proprio: p.personal_id === uid,
         treinos,
       };
     }

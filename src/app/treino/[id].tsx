@@ -6,7 +6,8 @@ import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
-import { textoKg, textoQuando, textoReps, useDadosAluno } from '@/lib/dados';
+import { resumoTreino, rotaComecar, textoKg, textoQuando, textoReps, useDadosAluno } from '@/lib/dados';
+import { infoModalidade } from '@/constants/theme';
 
 // Prévia do treino antes de começar: o que o personal prescreveu, na ordem.
 // O "Começar" abre o modo treino (Etapa 8).
@@ -37,6 +38,8 @@ export default function PreviaTreino() {
   }
 
   const totalSeries = treino.exercicios.reduce((t, e) => t + e.series, 0);
+  const info = infoModalidade(treino.modalidade);
+  const ehMusculacao = treino.modalidade === 'musculacao';
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
@@ -44,13 +47,13 @@ export default function PreviaTreino() {
 
       <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
         <View style={estilos.cabecalho}>
-          <Texto variante="display" cor={Cores.verde} style={estilos.letra}>
+          <Texto variante="display" cor={info.cor} style={estilos.letra}>
             {treino.letra}
           </Texto>
           <View style={{ flex: 1, gap: 4 }}>
             <Texto variante="subtitulo">{treino.nome}</Texto>
             <Texto variante="legenda">
-              {treino.exercicios.length} exercícios · {totalSeries} séries
+              {ehMusculacao ? `${treino.exercicios.length} exercícios · ${totalSeries} séries` : resumoTreino(treino, info.nome)}
             </Texto>
             <Texto variante="legenda">
               Por {dados.plano?.personalNome} · último: {textoQuando(treino.ultimaVez)}
@@ -67,6 +70,16 @@ export default function PreviaTreino() {
           </View>
         ) : null}
 
+        {!ehMusculacao ? (
+          <View style={[estilos.recado, { borderLeftColor: info.cor }]}>
+            <Texto variante="rotulo" cor={info.cor}>
+              O QUE FAZER
+            </Texto>
+            <Texto variante="corpo">{treino.descricao || 'Sem descrição.'}</Texto>
+          </View>
+        ) : null}
+
+        {ehMusculacao ? (
         <View style={estilos.lista}>
           {treino.exercicios.map((e, i) => (
             <View key={e.id} style={[estilos.exercicio, i > 0 && estilos.separador]}>
@@ -89,12 +102,14 @@ export default function PreviaTreino() {
             </View>
           ))}
         </View>
+        ) : null}
       </ScrollView>
 
       <View style={estilos.rodape}>
         <Botao
           titulo={`Começar treino ${treino.letra}`}
-          onPress={() => router.push(`/sessao/${treino.id}`)}
+          cor={info.cor}
+          onPress={() => router.push(rotaComecar(treino) as any)}
         />
       </View>
     </SafeAreaView>

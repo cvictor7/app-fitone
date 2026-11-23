@@ -1,5 +1,6 @@
 import { File } from 'expo-file-system';
 
+import type { Modalidade } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 // Consultas e gravações do lado do personal.
@@ -64,9 +65,26 @@ export type TreinoNoPlano = {
   id: string | null;
   letra: string;
   nome: string;
+  modalidade: Modalidade;
   diasSemana: number[];
-  exercicios: ExercicioNoPlano[];
+  exercicios: ExercicioNoPlano[]; // só musculação
+  descricao: string; // outras modalidades (ex.: o WOD do Cross)
+  duracaoMin: string;
+  distanciaKm: string; // corrida e bike
 };
+
+export const treinoVazio = (letra: string): TreinoNoPlano => ({
+  chave: novaChave(),
+  id: null,
+  letra,
+  nome: `Treino ${letra}`,
+  modalidade: 'musculacao',
+  diasSemana: [],
+  exercicios: [],
+  descricao: '',
+  duracaoMin: '',
+  distanciaKm: '',
+});
 
 export type PlanoEditavel = {
   id: string | null;
@@ -91,7 +109,7 @@ export function planoEmBranco(alunoId: string | null): PlanoEditavel {
     fim: '',
     observacao: '',
     ativo: true,
-    treinos: [{ chave: novaChave(), id: null, letra: 'A', nome: 'Treino A', diasSemana: [], exercicios: [] }],
+    treinos: [treinoVazio('A')],
   };
 }
 
@@ -123,7 +141,7 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
       .from('planos')
       .select(
         `id, aluno_id, nome, fim, observacao, ativo,
-         treinos(id, letra, nome, ordem, dias_semana,
+         treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km,
            treino_exercicios(ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
              exercicio:exercicios(id, nome, grupo)))`,
       )
@@ -148,6 +166,10 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
         id: t.id,
         letra: t.letra,
         nome: t.nome,
+        modalidade: t.modalidade ?? 'musculacao',
+        descricao: t.descricao ?? '',
+        duracaoMin: t.duracao_min ? String(t.duracao_min) : '',
+        distanciaKm: t.distancia_km ? String(Number(t.distancia_km)).replace('.', ',') : '',
         diasSemana: t.dias_semana ?? [],
         exercicios: (t.treino_exercicios ?? [])
           .sort((a: any, b: any) => a.ordem - b.ordem)
@@ -174,6 +196,9 @@ export function validarPlano(p: PlanoEditavel): string | null {
   if (p.treinos.length === 0) return 'O plano precisa de pelo menos um treino.';
   for (const t of p.treinos) {
     if (!t.nome.trim()) return `Dê um nome para o treino ${t.letra}.`;
+    if (t.modalidade !== 'musculacao' && !t.descricao.trim() && !num(t.duracaoMin))
+      return `Treino ${t.letra}: escreva o que fazer ou a duração.`;
+    if (t.modalidade !== 'musculacao') continue;
     for (const e of t.exercicios) {
       const s = num(e.series);
       const rmin = num(e.repsMin);
@@ -236,6 +261,10 @@ export async function salvarPlano(p: PlanoEditavel, gymId: string, personalId: s
       nome: t.nome.trim(),
       ordem: i + 1,
       dias_semana: t.diasSemana,
+      modalidade: t.modalidade,
+      descricao: t.modalidade === 'musculacao' ? null : t.descricao.trim() || null,
+      duracao_min: t.modalidade === 'musculacao' ? null : num(t.duracaoMin),
+      distancia_km: t.modalidade === 'corrida' || t.modalidade === 'bike' ? num(t.distanciaKm) : null,
     };
     let treinoId = t.id;
     if (treinoId) {
@@ -249,7 +278,7 @@ export async function salvarPlano(p: PlanoEditavel, gymId: string, personalId: s
 
     const r1 = await supabase.from('treino_exercicios').delete().eq('treino_id', treinoId);
     if (r1.error) throw new Error(r1.error.message);
-    if (t.exercicios.length) {
+    if (t.modalidade === 'musculacao' && t.exercicios.length) {
       const r2 = await supabase.from('treino_exercicios').insert(
         t.exercicios.map((e, j) => {
           const rmin = num(e.repsMin)!;

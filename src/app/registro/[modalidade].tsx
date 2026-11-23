@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -8,6 +8,7 @@ import { Botao } from '@/components/botao';
 import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Modalidades, Raio, type Modalidade } from '@/constants/theme';
+import { useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
@@ -17,7 +18,9 @@ import { supabase } from '@/lib/supabase';
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
 
 export default function RegistroRapido() {
-  const { modalidade } = useLocalSearchParams<{ modalidade: Modalidade }>();
+  const { modalidade, treino: treinoId } = useLocalSearchParams<{ modalidade: Modalidade; treino?: string }>();
+  const dados = useDadosAluno();
+  const treinoDoPlano = treinoId ? dados.plano?.treinos.find((t) => t.id === treinoId) : undefined;
   const info = Modalidades[modalidade as Modalidade] ?? Modalidades.livre;
 
   const [minutos, setMinutos] = useState(45);
@@ -26,6 +29,15 @@ export default function RegistroRapido() {
   const [salvando, setSalvando] = useState(false);
   const { gymId } = useSessao();
 
+  // Treino prescrito no plano: já vem com a duração e o que fazer
+  const preencheu = useRef(false);
+  useEffect(() => {
+    if (preencheu.current || !treinoDoPlano) return;
+    preencheu.current = true;
+    if (treinoDoPlano.duracaoMin) setMinutos(treinoDoPlano.duracaoMin);
+    if (treinoDoPlano.descricao) setObservacao(treinoDoPlano.descricao);
+  }, [treinoDoPlano]);
+
   async function salvar() {
     setSalvando(true);
     const fim = new Date();
@@ -33,6 +45,7 @@ export default function RegistroRapido() {
     const { data, error } = await supabase.from('sessoes').insert({
       gym_id: gymId,
       modalidade: modalidade in Modalidades ? modalidade : 'livre',
+      treino_id: treinoDoPlano?.id ?? null,
       origem: 'app',
       iniciada_em: inicio.toISOString(),
       concluida_em: fim.toISOString(),
@@ -62,8 +75,10 @@ export default function RegistroRapido() {
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
         <View style={{ gap: Espaco.sm }}>
           <View style={[estilos.faixa, { backgroundColor: info.cor }]} />
-          <Texto variante="titulo">{info.nome}</Texto>
-          <Texto variante="legenda">Registre o treino que você fez.</Texto>
+          <Texto variante="titulo">{treinoDoPlano ? `Treino ${treinoDoPlano.letra} · ${info.nome}` : info.nome}</Texto>
+          <Texto variante="legenda">
+            {treinoDoPlano ? treinoDoPlano.nome : 'Registre o treino que você fez.'}
+          </Texto>
         </View>
 
         <View style={{ gap: Espaco.sm }}>
