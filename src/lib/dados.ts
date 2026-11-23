@@ -120,6 +120,22 @@ export function escolherTreinoDeHoje(treinos: Treino[], hoje = new Date()): Trei
   return treinos[(idx + 1) % treinos.length];
 }
 
+// Todos os treinos de hoje: os que o personal marcou para hoje (pode ter mais de um, ex.: musculação + Hybrid)
+// + os do plano que já foram feitos hoje. Sem dia marcado no plano: um por dia, na ordem.
+// Os que faltam vêm primeiro.
+export function treinosDoDia(treinos: Treino[], hoje = new Date()): Treino[] {
+  if (treinos.length === 0) return [];
+  const feitoHoje = (t: Treino) => !!t.ultimaVez && mesmoDia(t.ultimaVez, hoje);
+  const marcados = treinos.filter((t) => t.diasSemana.includes(hoje.getDay()));
+  const lista = marcados.length > 0 ? [...marcados] : [];
+  for (const t of treinos) if (feitoHoje(t) && !lista.includes(t)) lista.push(t);
+  if (lista.length === 0) {
+    const proximo = escolherTreinoDeHoje(treinos, hoje);
+    if (proximo) lista.push(proximo);
+  }
+  return lista.sort((a, b) => Number(feitoHoje(a)) - Number(feitoHoje(b)) || a.ordem - b.ordem);
+}
+
 // Semanas seguidas (contando a atual só se já bateu a meta) com pelo menos META_SEMANAL treinos
 function sequenciaDeSemanas(datas: Date[]) {
   const porSemana = new Map<number, number>();
@@ -145,6 +161,7 @@ type Estado = {
   erro: string | null;
   plano: Plano | null;
   treinoDeHoje: Treino | null;
+  treinosDeHoje: Treino[];
   semana: DiaSemana[];
   treinosNaSemana: number;
   sequencia: number;
@@ -157,6 +174,7 @@ const VAZIO: Estado = {
   erro: null,
   plano: null,
   treinoDeHoje: null,
+  treinosDeHoje: [],
   semana: [],
   treinosNaSemana: 0,
   sequencia: 0,
@@ -282,7 +300,8 @@ export function useDadosAluno() {
       carregando: false,
       erro: null,
       plano,
-      treinoDeHoje: plano ? escolherTreinoDeHoje(plano.treinos, hoje) : null,
+      treinoDeHoje: plano ? (treinosDoDia(plano.treinos, hoje)[0] ?? null) : null,
+      treinosDeHoje: plano ? treinosDoDia(plano.treinos, hoje) : [],
       semana,
       treinosNaSemana: semana.reduce((t, d) => t + d.feitos.length, 0),
       sequencia: sequenciaDeSemanas(sessoes.map((s) => s.data)),

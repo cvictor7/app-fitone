@@ -53,7 +53,7 @@ export default function Treinar() {
             </View>
           ) : (
             dados.plano.treinos.map((t) => {
-              const hoje = t.id === dados.treinoDeHoje?.id;
+              const hoje = dados.treinosDeHoje.some((x) => x.id === t.id);
               const cor = infoModalidade(t.modalidade).cor;
               return (
                 <Pressable

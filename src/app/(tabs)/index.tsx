@@ -26,9 +26,6 @@ export default function Hoje() {
   const { perfil } = useSessao();
   const dados = useDadosAluno();
   const primeiroNome = perfil?.nome?.split(' ')[0] ?? '';
-  const treino = dados.treinoDeHoje;
-  // O treino do dia já foi feito hoje? Então a Hoje mostra o resumo em vez de "Começar"
-  const feitoDoTreino = treino ? dados.feitosHoje.find((f) => f.treinoId === treino.id) : undefined;
   const recorde = dados.recordes[0];
   const diasComTreino = dados.semana.filter((d) => d.feitos.length > 0).length;
   const [emAndamento, setEmAndamento] = useState<TreinoAtivo | null>(null);
@@ -77,35 +74,43 @@ export default function Hoje() {
             <Texto variante="legenda">{dados.erro}</Texto>
             <Botao titulo="Tentar de novo" tipo="secundario" onPress={dados.recarregar} />
           </View>
-        ) : treino && feitoDoTreino ? (
-          <CardFeitoHoje sessaoId={feitoDoTreino.id} letra={treino.letra} nome={treino.nome} />
-        ) : treino ? (
-          // A letra gigante é o elemento marcante, como o "1" dentro do ONE do logo
-          <View style={estilos.treinoDia}>
-            <View style={estilos.treinoTopo}>
-              <View style={{ flex: 1, gap: Espaco.xs }}>
-                <Texto variante="rotulo" cor={Cores.verde}>
-                  TREINO DE HOJE
-                </Texto>
-                <Texto variante="subtitulo">{treino.nome}</Texto>
-                <Texto variante="legenda">
-                  {resumoTreino(treino, infoModalidade(treino.modalidade).nome)} · último: {textoQuando(treino.ultimaVez)}
-                </Texto>
-              </View>
-              <Texto variante="display" cor={infoModalidade(treino.modalidade).cor} style={estilos.letra}>
-                {treino.letra}
-              </Texto>
-            </View>
-            <Botao
-              titulo="Começar treino"
-              cor={infoModalidade(treino.modalidade).cor}
-              onPress={() => router.push(`/treino/${treino.id}`)}
-            />
-            <Link href="/treinar" style={estilos.linkTreinos}>
-              <Texto variante="corpo" cor={Cores.textoSecundario}>
-                Ver todos os meus treinos →
-              </Texto>
-            </Link>
+        ) : dados.treinosDeHoje.length > 0 ? (
+          // Pode ter mais de um treino no dia (ex.: musculação + Hybrid). Os que faltam vêm primeiro.
+          <View style={{ gap: Espaco.md }}>
+            {dados.treinosDeHoje.map((t, idx) => {
+              const feito = dados.feitosHoje.find((f) => f.treinoId === t.id);
+              if (feito) return <CardFeitoHoje key={t.id} sessaoId={feito.id} letra={t.letra} nome={t.nome} />;
+              const info = infoModalidade(t.modalidade);
+              const total = dados.treinosDeHoje.length;
+              const primeiroPendente = dados.treinosDeHoje.findIndex((x) => !dados.feitosHoje.some((f) => f.treinoId === x.id)) === idx;
+              return (
+                // A letra gigante é o elemento marcante, como o "1" dentro do ONE do logo
+                <View key={t.id} style={[estilos.treinoDia, { borderLeftColor: info.cor }]}>
+                  <View style={estilos.treinoTopo}>
+                    <View style={{ flex: 1, gap: Espaco.xs }}>
+                      <Texto variante="rotulo" cor={info.cor}>
+                        {total > 1 ? `TREINO DE HOJE · ${idx + 1} DE ${total}` : 'TREINO DE HOJE'}
+                      </Texto>
+                      <Texto variante="subtitulo">{t.nome}</Texto>
+                      <Texto variante="legenda">
+                        {resumoTreino(t, info.nome)} · último: {textoQuando(t.ultimaVez)}
+                      </Texto>
+                    </View>
+                    <Texto variante="display" cor={info.cor} style={estilos.letra}>
+                      {t.letra}
+                    </Texto>
+                  </View>
+                  <Botao titulo="Começar treino" cor={info.cor} onPress={() => router.push(`/treino/${t.id}`)} />
+                  {primeiroPendente ? (
+                    <Link href="/treinar" style={estilos.linkTreinos}>
+                      <Texto variante="corpo" cor={Cores.textoSecundario}>
+                        Ver todos os meus treinos →
+                      </Texto>
+                    </Link>
+                  ) : null}
+                </View>
+              );
+            })}
           </View>
         ) : (
           <View style={estilos.treinoDia}>
