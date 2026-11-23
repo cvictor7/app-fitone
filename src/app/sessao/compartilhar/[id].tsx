@@ -83,7 +83,7 @@ export default function Compartilhar() {
   const numeros: [string, string, string?][] = [];
   numeros.push([textoDuracao(resumo.duracaoS), musculacao ? 'tempo' : 'de treino']);
   if (musculacao && resumo.volumeKg > 0) numeros.push([textoVolume(resumo.volumeKg), 'kg']);
-  if (resumo.recordes.length > 0) numeros.push([String(resumo.recordes.length), resumo.recordes.length === 1 ? 'recorde' : 'recordes', Cores.amarelo]);
+  if (resumo.recordes.length > 0) numeros.push([String(resumo.recordes.length), resumo.recordes.length === 1 ? 'recorde' : 'recordes', Cores.verde]);
   if (!musculacao && resumo.sensacao) numeros.push([SENSACOES[resumo.sensacao - 1], 'como foi']);
 
   const fundo = tipo === 'card' ? Cores.fundo : 'transparent';
@@ -99,7 +99,7 @@ export default function Compartilhar() {
           <Pressable
             key={t}
             onPress={() => (t === 'foto' && !foto ? escolherFoto() : setTipo(t))}
-            style={[estilos.opcao, tipo === t && { backgroundColor: info.cor }]}>
+            style={[estilos.opcao, tipo === t && { backgroundColor: Cores.verde }]}>
             <Texto variante="corpo" cor={tipo === t ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: 'Archivo_600SemiBold' }}>
               {t === 'card' ? 'Card' : t === 'foto' ? 'Com foto' : 'Adesivo'}
             </Texto>
@@ -124,7 +124,7 @@ export default function Compartilhar() {
                 <Logo largura={96 * e} comCidade={false} />
                 <Texto
                   variante="display"
-                  cor={info.cor}
+                  cor={Cores.verde}
                   numberOfLines={1}
                   adjustsFontSizeToFit
                   style={{ fontSize: (curto ? 150 : 84) * e, lineHeight: (curto ? 144 : 88) * e, marginTop: 8 * e, maxWidth: largura - 48 * e }}>
@@ -160,8 +160,8 @@ export default function Compartilhar() {
                   </Texto>
                 ) : null}
 
-                <View style={{ backgroundColor: info.cor, borderRadius: 99, paddingHorizontal: 12 * e, paddingVertical: 4 * e, marginTop: 8 * e }}>
-                  <Texto variante="subtitulo" cor={Cores.preto} style={{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }}>
+                <View style={{ borderColor: Cores.verde, borderWidth: 1.5 * e, borderRadius: 99, paddingHorizontal: 12 * e, paddingVertical: 4 * e, marginTop: 8 * e }}>
+                  <Texto variante="subtitulo" cor={Cores.branco} style={{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }}>
                     {info.nome}
                   </Texto>
                 </View>
@@ -177,7 +177,7 @@ export default function Compartilhar() {
       </View>
 
       <View style={estilos.rodape}>
-        <Botao titulo={gerando ? 'Gerando...' : 'Compartilhar'} cor={info.cor} disabled={gerando} onPress={compartilhar} />
+        <Botao titulo={gerando ? 'Gerando...' : 'Compartilhar'} disabled={gerando} onPress={compartilhar} />
         {tipo === 'foto' ? (
           <Pressable onPress={escolherFoto} style={{ alignSelf: 'center' }} hitSlop={8}>
             <Texto variante="corpo" cor={Cores.textoSecundario}>
