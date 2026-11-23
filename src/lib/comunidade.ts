@@ -21,6 +21,7 @@ export type Publicacao = {
   resumo: string | null;
   curtidas: number;
   euCurti: boolean;
+  comentarios: number;
 };
 
 export type LinhaRanking = { autorId: string; autor: string; eu: boolean; treinos: number; minutos: number };
@@ -43,6 +44,7 @@ function converter(r: any): Publicacao {
     resumo: r.resumo,
     curtidas: Number(r.curtidas ?? 0),
     euCurti: !!r.eu_curti,
+    comentarios: Number(r.comentarios ?? 0),
   };
 }
 
@@ -103,6 +105,38 @@ export async function curtir(publicacaoId: string, sim: boolean) {
       .eq('user_id', data.user?.id ?? '');
     if (error) throw error;
   }
+}
+
+export type Comentario = { id: string; autor: string; eu: boolean; texto: string; criadoEm: Date; possoApagar: boolean };
+
+export async function carregarPublicacao(id: string): Promise<Publicacao | null> {
+  const { data, error } = await supabase.rpc('publicacao_comunidade', { p_id: id });
+  if (error) throw error;
+  const r = ((data ?? []) as any[])[0];
+  return r ? converter(r) : null;
+}
+
+export async function listarComentarios(publicacaoId: string): Promise<Comentario[]> {
+  const { data, error } = await supabase.rpc('comentarios_da_publicacao', { p_publicacao: publicacaoId });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map((c) => ({
+    id: c.id,
+    autor: c.autor,
+    eu: !!c.eu,
+    texto: c.texto,
+    criadoEm: new Date(c.criado_em),
+    possoApagar: !!c.posso_apagar,
+  }));
+}
+
+export async function comentar(publicacaoId: string, texto: string) {
+  const { error } = await supabase.from('comentarios').insert({ publicacao_id: publicacaoId, texto: texto.trim() });
+  if (error) throw error;
+}
+
+export async function apagarComentario(id: string) {
+  const { error } = await supabase.from('comentarios').delete().eq('id', id);
+  if (error) throw error;
 }
 
 /** "agora", "há 5 min", "há 3 h", "ontem", "12/11" */

@@ -172,7 +172,14 @@ export default function Comunidade() {
           contentContainerStyle={estilos.conteudo}
           ListHeaderComponent={cabecalho}
           ItemSeparatorComponent={() => <View style={{ height: Espaco.md }} />}
-          renderItem={({ item }) => <CardPublicacao p={item} aoCurtir={aoCurtir} aoRemover={aoRemover} />}
+          renderItem={({ item }) => (
+            <CardPublicacao
+              p={item}
+              aoCurtir={aoCurtir}
+              aoRemover={aoRemover}
+              aoComentar={(x) => router.push(`/publicacao/${x.id}`)}
+            />
+          )}
           refreshControl={refresh}
           onEndReached={maisAntigos}
           onEndReachedThreshold={0.4}

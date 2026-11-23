@@ -2,7 +2,7 @@ import * as Haptics from 'expo-haptics';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
-import { IconeFogo } from '@/components/icones';
+import { IconeBalao, IconeFogo } from '@/components/icones';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio, infoModalidade } from '@/constants/theme';
 import { tempoAtras, type Publicacao } from '@/lib/comunidade';
@@ -14,9 +14,10 @@ type Props = {
   p: Publicacao;
   aoCurtir: (p: Publicacao) => void;
   aoRemover: (p: Publicacao) => void;
+  aoComentar?: (p: Publicacao) => void; // sem isso (tela do próprio post), o botão some
 };
 
-export function CardPublicacao({ p, aoCurtir, aoRemover }: Props) {
+export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar }: Props) {
   const info = infoModalidade(p.modalidade);
   const musculacao = p.modalidade === 'musculacao';
 
@@ -83,9 +84,17 @@ export function CardPublicacao({ p, aoCurtir, aoRemover }: Props) {
             Boa!
           </Texto>
         </Pressable>
-        <Texto variante="legenda">
+        <Texto variante="legenda" style={{ flex: 1 }}>
           {p.curtidas === 0 ? 'Seja o primeiro' : p.curtidas === 1 ? '1 pessoa' : `${p.curtidas} pessoas`}
         </Texto>
+        {aoComentar ? (
+          <Pressable onPress={() => aoComentar(p)} hitSlop={10} style={estilos.boa}>
+            <IconeBalao cor={Cores.texto} />
+            <Texto variante="corpo" style={{ fontFamily: 'Archivo_600SemiBold' }}>
+              {p.comentarios > 0 ? p.comentarios : 'Comentar'}
+            </Texto>
+          </Pressable>
+        ) : null}
       </View>
     </Pressable>
   );

@@ -93,3 +93,11 @@ export function IconeTrofeu({ cor, tamanho = 26 }: Props) {
     </Svg>
   );
 }
+
+export function IconeBalao({ cor, tamanho = 18 }: Props) {
+  return (
+    <Svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 5h16v11H10l-5 4v-4H4V5Z" stroke={cor} strokeWidth={2.2} strokeLinejoin="round" />
+    </Svg>
+  );
+}

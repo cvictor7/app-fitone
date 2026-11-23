@@ -85,6 +85,7 @@ function Navegacao() {
         <Stack.Screen name="meu-plano/[id]" />
         <Stack.Screen name="historico" />
         <Stack.Screen name="desafio/[id]" />
+        <Stack.Screen name="publicacao/[id]" />
         <Stack.Screen name="timer/[modalidade]" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />
