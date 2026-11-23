@@ -6,6 +6,7 @@ import { IconeSeta } from '@/components/icones';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
 import { resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
+import { rotaPorContaPropria } from '@/lib/dados';
 import { Botao } from '@/components/botao';
 
 // Aba "Treinar": os treinos do plano (qualquer um pode ser iniciado a qualquer hora)
@@ -114,7 +115,7 @@ export default function Treinar() {
                 <Pressable
                   key={m}
                   accessibilityRole="button"
-                  onPress={() => router.push(`/registro/${m}`)}
+                  onPress={() => router.push(rotaPorContaPropria(m) as any)}
                   style={({ pressed }) => [estilos.bloco, pressed && { backgroundColor: Cores.superficieAlta }]}>
                   <View style={[estilos.faixaCor, { backgroundColor: cor }]} />
                   <Texto variante="subtitulo" style={{ fontSize: 22 }}>

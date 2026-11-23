@@ -10,6 +10,7 @@ import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
 import { META_SEMANAL, resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
+import { rotaPorContaPropria } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 import { lerTreinoAtivo, type TreinoAtivo } from '@/lib/treino-ativo';
 
@@ -193,7 +194,7 @@ export default function Hoje() {
           <Texto variante="rotulo">POR CONTA PRÓPRIA</Texto>
           <View style={estilos.chips}>
             {ListaModalidades.filter((m) => m !== 'musculacao').map((m) => (
-              <ChipModalidade key={m} modalidade={m} onPress={() => router.push(`/registro/${m}`)} />
+              <ChipModalidade key={m} modalidade={m} onPress={() => router.push(rotaPorContaPropria(m) as any)} />
             ))}
           </View>
         </View>

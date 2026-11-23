@@ -96,7 +96,14 @@ export function resumoTreino(t: Treino, nomeModalidade: string) {
 
 // Para onde vai o "Começar": musculação abre o modo treino; o resto abre o registro com o treino preenchido
 export function rotaComecar(t: Treino) {
-  return t.modalidade === 'musculacao' ? `/sessao/${t.id}` : `/registro/${t.modalidade}?treino=${t.id}`;
+  if (t.modalidade === 'musculacao') return `/sessao/${t.id}`;
+  if (t.modalidade === 'cross' || t.modalidade === 'hybrid') return `/timer/${t.modalidade}?treino=${t.id}`;
+  return `/registro/${t.modalidade}?treino=${t.id}`;
+}
+
+// Por conta própria: Cross e Hybrid abrem o timer; o resto, o registro rápido
+export function rotaPorContaPropria(m: string) {
+  return m === 'cross' || m === 'hybrid' ? `/timer/${m}` : `/registro/${m}`;
 }
 
 export function textoReps(e: { repsMin: number; repsMax: number }) {
