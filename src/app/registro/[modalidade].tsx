@@ -30,7 +30,7 @@ export default function RegistroRapido() {
     setSalvando(true);
     const fim = new Date();
     const inicio = new Date(fim.getTime() - minutos * 60000);
-    const { error } = await supabase.from('sessoes').insert({
+    const { data, error } = await supabase.from('sessoes').insert({
       gym_id: gymId,
       modalidade: modalidade in Modalidades ? modalidade : 'livre',
       origem: 'app',
@@ -40,14 +40,14 @@ export default function RegistroRapido() {
       sensacao: sensacao === null ? null : sensacao + 1,
       observacao: observacao.trim() || null,
       status: 'concluida',
-    });
+    }).select('id').single();
     setSalvando(false);
     if (error) {
       Alert.alert('Não deu para salvar', `Confira a internet e tente de novo.\n(${error.message})`);
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    router.back();
+    router.replace(`/sessao/concluido/${data.id}`);
   }
 
   function mudarMinutos(delta: number) {

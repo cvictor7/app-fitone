@@ -66,6 +66,9 @@ function Navegacao() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="treino/[id]" />
         <Stack.Screen name="registro/[modalidade]" />
+        <Stack.Screen name="sessao/[treinoId]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="sessao/concluido/[id]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="sessao/compartilhar/[id]" />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />
     </Stack>

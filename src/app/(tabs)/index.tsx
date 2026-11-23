@@ -1,5 +1,6 @@
-import { Link, router } from 'expo-router';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Link, router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
@@ -9,6 +10,7 @@ import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
 import { META_SEMANAL, textoQuando, useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
+import { lerTreinoAtivo, type TreinoAtivo } from '@/lib/treino-ativo';
 
 // Tela "Hoje": o treino que o plano manda hoje, a semana, a sequência e o último recorde.
 // O app não sugere troca: para fazer outro, o aluno abre "Ver todos os meus treinos".
@@ -26,6 +28,12 @@ export default function Hoje() {
   const treino = dados.treinoDeHoje;
   const recorde = dados.recordes[0];
   const diasComTreino = dados.semana.filter((d) => d.feitos.length > 0).length;
+  const [emAndamento, setEmAndamento] = useState<TreinoAtivo | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      lerTreinoAtivo().then(setEmAndamento);
+    }, []),
+  );
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
@@ -39,6 +47,22 @@ export default function Hoje() {
         </View>
 
         <Texto variante="titulo">Bora, {primeiroNome}</Texto>
+
+        {emAndamento ? (
+          <Pressable onPress={() => router.push(`/sessao/${emAndamento.treinoId}`)} style={estilos.andamento}>
+            <View style={{ flex: 1 }}>
+              <Texto variante="rotulo" cor={Cores.preto}>
+                TREINO EM ANDAMENTO
+              </Texto>
+              <Texto variante="subtitulo" cor={Cores.preto} style={{ fontSize: 20 }}>
+                {emAndamento.letra} · {emAndamento.nome}
+              </Texto>
+            </View>
+            <Texto variante="subtitulo" cor={Cores.preto}>
+              Continuar →
+            </Texto>
+          </Pressable>
+        ) : null}
 
         {dados.carregando ? (
           <View style={[estilos.treinoDia, { alignItems: 'center', paddingVertical: Espaco.xxl }]}>
@@ -171,6 +195,14 @@ const estilos = StyleSheet.create({
     padding: Espaco.md + 4,
     gap: Espaco.md,
     overflow: 'hidden',
+  },
+  andamento: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espaco.md,
+    backgroundColor: Cores.verde,
+    borderRadius: Raio.md,
+    padding: Espaco.md,
   },
   treinoTopo: { flexDirection: 'row', alignItems: 'flex-start' },
   letra: { fontSize: 120, lineHeight: 110, marginTop: -8, marginRight: -4 },

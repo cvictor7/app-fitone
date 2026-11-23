@@ -1,0 +1,191 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import * as Crypto from 'expo-crypto';
+
+import type { Treino } from '@/lib/dados';
+import { supabase } from '@/lib/supabase';
+
+// Treino em andamento. Fica salvo no celular a cada toque:
+// se o app fechar ou a internet cair na academia, nada se perde.
+
+export type SerieAtiva = {
+  numero: number;
+  kg: string; // texto para o campo; vira número ao salvar
+  reps: string;
+  feita: boolean;
+  feitaEm?: string;
+};
+
+export type ExercicioAtivo = {
+  treinoExercicioId: string;
+  exercicioId: string;
+  nome: string;
+  grupo: string;
+  repsMin: number;
+  repsMax: number;
+  descansoS: number;
+  observacao: string | null;
+  midiaUrl: string | null;
+  anterior: { kg: number | null; reps: number | null }[]; // séries do último treino com esse exercício
+  series: SerieAtiva[];
+};
+
+export type TreinoAtivo = {
+  sessaoId: string; // gerado no celular; evita treino duplicado se reenviar
+  treinoId: string;
+  letra: string;
+  nome: string;
+  gymId: string | null;
+  iniciadoEm: string;
+  atual: number; // índice do exercício na tela
+  exercicios: ExercicioAtivo[];
+};
+
+const CHAVE = 'fitone:treino-ativo';
+
+export async function lerTreinoAtivo(): Promise<TreinoAtivo | null> {
+  try {
+    const t = await AsyncStorage.getItem(CHAVE);
+    return t ? (JSON.parse(t) as TreinoAtivo) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function guardarTreinoAtivo(t: TreinoAtivo) {
+  try {
+    await AsyncStorage.setItem(CHAVE, JSON.stringify(t));
+  } catch {
+    // sem espaço no celular: segue a vida, o treino continua na memória
+  }
+}
+
+export async function apagarTreinoAtivo() {
+  await AsyncStorage.removeItem(CHAVE);
+}
+
+function kgTexto(n: number | null | undefined) {
+  if (n === null || n === undefined) return '';
+  return String(Number(n)).replace('.', ',');
+}
+
+export function textoParaNumero(t: string): number | null {
+  const n = Number(t.replace(',', '.').trim());
+  return t.trim() === '' || Number.isNaN(n) ? null : n;
+}
+
+// Busca as séries do último treino de cada exercício (para mostrar "anterior" e já preencher)
+async function buscarAnteriores(exercicioIds: string[]) {
+  const mapa = new Map<string, { kg: number | null; reps: number | null }[]>();
+  if (exercicioIds.length === 0) return mapa;
+
+  const { data } = await supabase
+    .from('series')
+    .select('exercicio_id, numero, carga_kg, reps, feita_em, sessao_id, sessao:sessoes!inner(status)')
+    .in('exercicio_id', exercicioIds)
+    .eq('sessao.status', 'concluida')
+    .order('feita_em', { ascending: false })
+    .limit(400);
+
+  const sessaoDoExercicio = new Map<string, string>();
+  for (const s of (data ?? []) as any[]) {
+    // fica só com a sessão mais recente de cada exercício
+    if (!sessaoDoExercicio.has(s.exercicio_id)) sessaoDoExercicio.set(s.exercicio_id, s.sessao_id);
+    if (sessaoDoExercicio.get(s.exercicio_id) !== s.sessao_id) continue;
+    const lista = mapa.get(s.exercicio_id) ?? [];
+    lista.push({ numero: s.numero, kg: s.carga_kg === null ? null : Number(s.carga_kg), reps: s.reps } as any);
+    mapa.set(s.exercicio_id, lista);
+  }
+  for (const [k, lista] of mapa) {
+    mapa.set(
+      k,
+      (lista as any[]).sort((a, b) => a.numero - b.numero).map((x) => ({ kg: x.kg, reps: x.reps })),
+    );
+  }
+  return mapa;
+}
+
+export async function montarTreinoAtivo(treino: Treino, gymId: string | null): Promise<TreinoAtivo> {
+  const anteriores = await buscarAnteriores(treino.exercicios.map((e) => e.exercicioId));
+
+  return {
+    sessaoId: Crypto.randomUUID(),
+    treinoId: treino.id,
+    letra: treino.letra,
+    nome: treino.nome,
+    gymId,
+    iniciadoEm: new Date().toISOString(),
+    atual: 0,
+    exercicios: treino.exercicios.map((e) => {
+      const ant = anteriores.get(e.exercicioId) ?? [];
+      return {
+        treinoExercicioId: e.id,
+        exercicioId: e.exercicioId,
+        nome: e.nome,
+        grupo: e.grupo,
+        repsMin: e.repsMin,
+        repsMax: e.repsMax,
+        descansoS: e.descansoS,
+        observacao: e.observacao,
+        midiaUrl: e.midiaUrl,
+        anterior: ant,
+        // Já vem preenchido: carga da última vez (ou a sugerida pelo personal) e reps máximas
+        series: Array.from({ length: e.series }, (_, i) => ({
+          numero: i + 1,
+          kg: kgTexto(ant[i]?.kg ?? ant[ant.length - 1]?.kg ?? e.cargaSugeridaKg),
+          reps: String(ant[i]?.reps ?? e.repsMax),
+          feita: false,
+        })),
+      };
+    }),
+  };
+}
+
+export type ResultadoSalvar = { ok: true; sessaoId: string } | { ok: false; erro: string };
+
+// Envia o treino para o banco. O banco calcula volume, duração e recordes sozinho.
+export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
+  const sessaoId = t.sessaoId;
+  const feitas = t.exercicios.flatMap((e) =>
+    e.series
+      .filter((s) => s.feita)
+      .map((s) => ({
+        sessao_id: sessaoId,
+        exercicio_id: e.exercicioId,
+        treino_exercicio_id: e.treinoExercicioId,
+        numero: s.numero,
+        carga_kg: textoParaNumero(s.kg),
+        reps: textoParaNumero(s.reps),
+        feita_em: s.feitaEm ?? new Date().toISOString(),
+      })),
+  );
+
+  // upsert: se a internet caiu no meio e a pessoa tentar de novo, não duplica
+  const r1 = await supabase.from('sessoes').upsert(
+    {
+      id: sessaoId,
+      gym_id: t.gymId,
+      modalidade: 'musculacao',
+      treino_id: t.treinoId,
+      origem: 'app',
+      iniciada_em: t.iniciadoEm,
+      status: 'em_andamento',
+    },
+    { onConflict: 'id' },
+  );
+  if (r1.error) return { ok: false, erro: r1.error.message };
+
+  await supabase.from('series').delete().eq('sessao_id', sessaoId);
+  if (feitas.length > 0) {
+    const r2 = await supabase.from('series').insert(feitas);
+    if (r2.error) return { ok: false, erro: r2.error.message };
+  }
+
+  const r3 = await supabase
+    .from('sessoes')
+    .update({ status: 'concluida', concluida_em: new Date().toISOString() })
+    .eq('id', sessaoId);
+  if (r3.error) return { ok: false, erro: r3.error.message };
+
+  return { ok: true, sessaoId };
+}

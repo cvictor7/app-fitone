@@ -19,6 +19,7 @@ export type ExercicioPrescrito = {
   cargaSugeridaKg: number | null;
   descansoS: number;
   observacao: string | null;
+  midiaUrl: string | null;
 };
 
 export type Treino = {
@@ -154,7 +155,7 @@ export function useDadosAluno() {
            personal:profiles!planos_personal_id_fkey(nome),
            treinos(id, letra, nome, ordem, dias_semana,
              treino_exercicios(id, ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
-               exercicio:exercicios(id, nome, grupo)))`,
+               exercicio:exercicios(id, nome, grupo, midia_url)))`,
         )
         .eq('aluno_id', uid)
         .eq('ativo', true)
@@ -211,6 +212,7 @@ export function useDadosAluno() {
               cargaSugeridaKg: te.carga_sugerida_kg === null ? null : Number(te.carga_sugerida_kg),
               descansoS: te.descanso_s,
               observacao: te.observacao,
+              midiaUrl: te.exercicio?.midia_url ?? null,
             }))
             .sort((a: ExercicioPrescrito, b: ExercicioPrescrito) => a.ordem - b.ordem),
         }))

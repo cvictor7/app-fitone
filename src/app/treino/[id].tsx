@@ -1,5 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BarraTopo } from '@/components/barra-topo';
@@ -94,7 +94,7 @@ export default function PreviaTreino() {
       <View style={estilos.rodape}>
         <Botao
           titulo={`Começar treino ${treino.letra}`}
-          onPress={() => Alert.alert('Modo treino', 'O modo treino chega na Etapa 8.')}
+          onPress={() => router.push(`/sessao/${treino.id}`)}
         />
       </View>
     </SafeAreaView>
