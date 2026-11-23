@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router/tabs';
 
-import { IconeEvolucao, IconeHoje, IconePerfil, IconeTreinar } from '@/components/icones';
+import { IconeComunidade, IconeEvolucao, IconeHoje, IconePerfil, IconeTreinar } from '@/components/icones';
 import { Cores, Fontes } from '@/constants/theme';
 
 export default function LayoutAbas() {
@@ -32,6 +32,10 @@ export default function LayoutAbas() {
       <Tabs.Screen
         name="evolucao"
         options={{ title: 'Evolução', tabBarIcon: ({ color }) => <IconeEvolucao cor={String(color)} /> }}
+      />
+      <Tabs.Screen
+        name="comunidade"
+        options={{ title: 'Comunidade', tabBarIcon: ({ color }) => <IconeComunidade cor={String(color)} /> }}
       />
       <Tabs.Screen
         name="perfil"

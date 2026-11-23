@@ -58,3 +58,28 @@ export function IconeSeta({ cor, tamanho = 20 }: Props) {
     </Svg>
   );
 }
+
+export function IconeComunidade({ cor, tamanho = 26 }: Props) {
+  return (
+    <Svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none">
+      <Circle cx="9" cy="8" r="3.4" stroke={cor} strokeWidth={2.2} />
+      <Path d="M2.8 20c.6-3.6 3-5.6 6.2-5.6s5.6 2 6.2 5.6" stroke={cor} strokeWidth={2.2} strokeLinecap="round" />
+      <Circle cx="17" cy="9" r="2.6" stroke={cor} strokeWidth={2} />
+      <Path d="M17.5 14.2c2 .4 3.3 2 3.7 4.6" stroke={cor} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+export function IconeFogo({ cor, tamanho = 22, cheio = false }: Props & { cheio?: boolean }) {
+  return (
+    <Svg width={tamanho} height={tamanho} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2.5c.6 3.2 4.8 5.6 4.8 10.4a4.8 4.8 0 0 1-9.6 0c0-2 .9-3.4 2-4.6.2 1.5.9 2.6 2 3.1-.6-3.4.2-6.4.8-8.9Z"
+        stroke={cor}
+        strokeWidth={2}
+        strokeLinejoin="round"
+        fill={cheio ? cor : 'none'}
+      />
+    </Svg>
+  );
+}

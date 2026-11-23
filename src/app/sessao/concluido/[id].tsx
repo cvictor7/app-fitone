@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
+import { PublicarTreino } from '@/components/publicar-treino';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Modalidades, Raio } from '@/constants/theme';
 import { buscarResumo, textoDuracao, textoVolume, type ResumoSessao } from '@/lib/sessao-resumo';
@@ -46,7 +47,7 @@ export default function TreinoConcluido() {
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={estilos.conteudo}>
+      <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={{ alignItems: 'center', gap: 2 }}>
           <Texto variante="rotulo" cor={cor}>
             TREINO FEITO
@@ -130,6 +131,8 @@ export default function TreinoConcluido() {
             {sensacao ? SENSACOES[sensacao - 1] : ' '}
           </Texto>
         </View>
+
+        <PublicarTreino sessaoId={id} rotulo={resumo.rotulo} />
       </ScrollView>
 
       <View style={estilos.rodape}>
