@@ -77,7 +77,7 @@ export function TelaPerfil() {
           <Texto variante="corpo">Sair</Texto>
         </Pressable>
 
-        <Pressable onPress={() => Alert.alert('Excluir conta', 'Chega na Etapa 14.')} style={{ alignSelf: 'center' }}>
+        <Pressable onPress={() => router.push('/excluir-conta')} style={{ alignSelf: 'center' }}>
           <Texto variante="legenda" cor={Cores.perigo}>
             Excluir minha conta
           </Texto>

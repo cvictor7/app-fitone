@@ -86,6 +86,9 @@ function Navegacao() {
         <Stack.Screen name="historico" />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />
+      <Stack.Protected guard={logado}>
+        <Stack.Screen name="excluir-conta" />
+      </Stack.Protected>
     </Stack>
   );
 }
