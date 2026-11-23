@@ -114,9 +114,14 @@ export default function Comunidade() {
 
   const cabecalho = (
     <View style={{ gap: Espaco.md, marginBottom: Espaco.md }}>
-      <Texto variante="titulo" style={{ paddingTop: Espaco.sm }}>
-        Comunidade
-      </Texto>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Espaco.sm }}>
+        <Texto variante="titulo">Comunidade</Texto>
+        <Pressable onPress={() => router.push('/publicar')} style={estilos.publicar} hitSlop={6}>
+          <Texto variante="corpo" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+            + Publicar
+          </Texto>
+        </Pressable>
+      </View>
       <View style={estilos.seletor}>
         {(['feed', 'ranking', 'desafios'] as const).map((a) => (
           <Pressable
@@ -187,7 +192,7 @@ export default function Comunidade() {
             <View style={estilos.vazio}>
               <Texto variante="subtitulo">Ninguém publicou ainda</Texto>
               <Texto variante="corpo" cor={Cores.textoSecundario} style={{ textAlign: 'center' }}>
-                Termine um treino e toque em "Publicar na comunidade" para aparecer aqui.
+                Toque em "+ Publicar" lá em cima e escolha um treino seu, ou publique direto no fim do treino.
               </Texto>
             </View>
           }
@@ -267,6 +272,7 @@ function LinhaDoRanking({ r, posicao }: { r: LinhaRanking; posicao: number }) {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { padding: Espaco.lg, paddingBottom: Espaco.xxl },
+  publicar: { backgroundColor: Cores.verde, borderRadius: Raio.pilula, paddingHorizontal: 16, minHeight: 40, justifyContent: 'center' },
   seletor: { flexDirection: 'row', backgroundColor: Cores.superficie, borderRadius: Raio.pilula, padding: 4 },
   opcao: { flex: 1, minHeight: 44, borderRadius: Raio.pilula, alignItems: 'center', justifyContent: 'center' },
   vazio: { alignItems: 'center', gap: Espaco.sm, paddingVertical: Espaco.xxl, paddingHorizontal: Espaco.lg },

@@ -87,6 +87,7 @@ function Navegacao() {
         <Stack.Screen name="desafio/[id]" />
         <Stack.Screen name="publicacao/[id]" />
         <Stack.Screen name="conversa/[id]" />
+        <Stack.Screen name="publicar" />
         <Stack.Screen name="timer/[modalidade]" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />

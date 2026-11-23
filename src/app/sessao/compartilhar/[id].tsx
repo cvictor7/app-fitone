@@ -1,8 +1,19 @@
+import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { ActivityIndicator, Alert, Image, type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Image,
+  type LayoutChangeEvent,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { captureRef } from 'react-native-view-shot';
 
@@ -14,12 +25,16 @@ import { Cores, Espaco, Raio, infoModalidade } from '@/constants/theme';
 import { buscarResumo, textoDuracao, textoVolume, type ResumoSessao } from '@/lib/sessao-resumo';
 
 // Compartilhar o treino: vira imagem e abre o menu do celular (Stories, WhatsApp, salvar...).
-// Três jeitos: "Card" (fundo preto), "Com foto" (números por cima de uma foto sua) e
-// "Adesivo" (fundo transparente, para colar por cima de uma foto no próprio Instagram).
-// O card é sempre 9:16 e tudo é medido pelo tamanho dele, então nunca corta. Nunca mostra peso corporal.
+// - Card: fundo preto da Fit One, imagem 9:16.
+// - Com foto: sua foto no fundo e o selo do treino por cima. Arraste o selo com um dedo e
+//   aumente/diminua com dois (pinça) ou nos botões. Imagem 9:16.
+// - Adesivo: só o selo, com fundo transparente, para colar no Instagram e ajustar lá.
+// O selo nunca corta: se não couber, ele encolhe sozinho. Nunca mostra peso corporal.
 
 type Tipo = 'card' | 'foto' | 'adesivo';
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
+const MIN = 0.35;
+const MAX = 1.6;
 
 export default function Compartilhar() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,12 +42,64 @@ export default function Compartilhar() {
   const [tipo, setTipo] = useState<Tipo>('card');
   const [foto, setFoto] = useState<string | null>(null);
   const [palco, setPalco] = useState({ w: 0, h: 0 });
+  const [selo, setSelo] = useState({ w: 0, h: 0 }); // tamanho natural do selo
   const [gerando, setGerando] = useState(false);
-  const alvo = useRef<ComponentRef<typeof View>>(null);
+  const alvo = useRef<ComponentRef<typeof View>>(null); // imagem 9:16 inteira
+  const alvoSelo = useRef<ComponentRef<typeof View>>(null); // só o selo (adesivo)
+
+  // posição (a partir do centro) e tamanho escolhidos pela pessoa
+  const pos = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const escala = useRef(new Animated.Value(1)).current;
+  const atual = useRef({ x: 0, y: 0, s: 1 });
+  const gesto = useRef({ x: 0, y: 0, s: 1, dist: 0 });
 
   useEffect(() => {
     buscarResumo(id).then(setResumo);
   }, [id]);
+
+  function aplicar(x: number, y: number, s: number) {
+    const sc = Math.max(MIN, Math.min(MAX, s));
+    atual.current = { x, y, s: sc };
+    pos.setValue({ x, y });
+    escala.setValue(sc);
+  }
+
+  const distancia = (t: readonly { pageX: number; pageY: number }[]) =>
+    Math.hypot(t[0].pageX - t[1].pageX, t[0].pageY - t[1].pageY);
+
+  const arrastar = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        gesto.current = { ...atual.current, dist: 0 };
+      },
+      onPanResponderMove: (ev, g) => {
+        const toques = ev.nativeEvent.touches;
+        if (toques.length >= 2) {
+          // dois dedos: pinça muda o tamanho
+          const d = distancia(toques);
+          if (!gesto.current.dist) gesto.current = { ...atual.current, dist: d };
+          else aplicar(atual.current.x, atual.current.y, (gesto.current.s * d) / gesto.current.dist);
+        } else if (!gesto.current.dist) {
+          aplicar(gesto.current.x + g.dx, gesto.current.y + g.dy, atual.current.s);
+        }
+      },
+      onPanResponderRelease: () => {
+        gesto.current.dist = 0;
+      },
+      onPanResponderTerminationRequest: () => false,
+    }),
+  ).current;
+
+  // posição inicial de cada jeito: card no meio; com foto, embaixo e um pouco menor
+  function posicaoInicial(t: Tipo, alturaCard: number, base: number) {
+    if (t === 'foto' && selo.h > 0) {
+      const s = 0.85;
+      const y = alturaCard / 2 - (selo.h * base * s) / 2 - alturaCard * 0.05;
+      aplicar(0, y, s);
+    } else aplicar(0, 0, 1);
+  }
 
   async function escolherFoto() {
     const permissao = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -48,11 +115,19 @@ export default function Compartilhar() {
   }
 
   async function compartilhar() {
-    if (!alvo.current) return;
     if (tipo === 'foto' && !foto) return escolherFoto();
     setGerando(true);
     try {
-      const uri = await captureRef(alvo as any, { format: 'png', quality: 1, result: 'tmpfile', width: 1080, height: 1920 });
+      const uri =
+        tipo === 'adesivo'
+          ? await captureRef(alvoSelo as any, {
+              format: 'png',
+              quality: 1,
+              result: 'tmpfile',
+              width: 1080,
+              height: Math.round((1080 * selo.h) / Math.max(1, selo.w)),
+            })
+          : await captureRef(alvo as any, { format: 'png', quality: 1, result: 'tmpfile', width: 1080, height: 1920 });
       await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Compartilhar treino', UTI: 'public.png' });
     } catch (e: any) {
       Alert.alert('Não deu para gerar a imagem', String(e?.message ?? e));
@@ -61,7 +136,24 @@ export default function Compartilhar() {
     }
   }
 
-  const aoMedir = (ev: LayoutChangeEvent) => setPalco({ w: ev.nativeEvent.layout.width, h: ev.nativeEvent.layout.height });
+  const aoMedirPalco = (ev: LayoutChangeEvent) => setPalco({ w: ev.nativeEvent.layout.width, h: ev.nativeEvent.layout.height });
+
+  // Card 9:16 do maior tamanho que cabe; "e" = escala (1 = card de 360 px de largura)
+  const largura = Math.max(0, Math.min(palco.w, (palco.h * 9) / 16));
+  const altura = (largura * 16) / 9;
+  const e = largura / 360;
+  // encolhe o selo para sempre caber inteiro no card
+  const base = selo.h > 0 ? Math.min(1, (altura * 0.9) / selo.h, (largura * 0.94) / selo.w) : 1;
+
+  // reposiciona quando muda o jeito ou quando o selo é medido
+  const chave = `${tipo}-${Math.round(selo.h)}-${Math.round(altura)}`;
+  const ultimaChave = useRef('');
+  useEffect(() => {
+    if (!selo.h || !altura || ultimaChave.current === chave) return;
+    ultimaChave.current = chave;
+    posicaoInicial(tipo, altura, base);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chave]);
 
   if (!resumo) {
     return (
@@ -74,11 +166,7 @@ export default function Compartilhar() {
 
   const info = infoModalidade(resumo.modalidade);
   const musculacao = resumo.series > 0;
-
-  // Card 9:16 do maior tamanho que cabe; "e" = escala (1 = card de 360 px de largura)
-  const largura = Math.max(0, Math.min(palco.w, (palco.h * 9) / 16));
-  const altura = (largura * 16) / 9;
-  const e = largura / 360;
+  const curto = resumo.rotulo.length <= 2;
 
   const numeros: [string, string, string?][] = [];
   numeros.push([textoDuracao(resumo.duracaoS), musculacao ? 'tempo' : 'de treino']);
@@ -86,9 +174,74 @@ export default function Compartilhar() {
   if (resumo.recordes.length > 0) numeros.push([String(resumo.recordes.length), resumo.recordes.length === 1 ? 'recorde' : 'recordes', Cores.verde]);
   if (!musculacao && resumo.sensacao) numeros.push([SENSACOES[resumo.sensacao - 1], 'como foi']);
 
-  const fundo = tipo === 'card' ? Cores.fundo : 'transparent';
   const comFoto = tipo === 'foto' && !!foto;
-  const curto = resumo.rotulo.length <= 2;
+  const mexe = tipo !== 'adesivo'; // no adesivo quem ajusta é o Instagram
+
+  // ---------- o selo do treino (mesmo desenho nos três jeitos) ----------
+  const conteudoSelo = (
+    <View
+      ref={alvoSelo}
+      collapsable={false}
+      onLayout={(ev) => {
+        const { width, height } = ev.nativeEvent.layout;
+        if (Math.abs(width - selo.w) > 1 || Math.abs(height - selo.h) > 1) setSelo({ w: width, h: height });
+      }}
+      style={[
+        { width: 312 * e, alignItems: 'center', gap: 6 * e, paddingVertical: 20 * e, paddingHorizontal: 16 * e, borderRadius: 22 * e },
+        comFoto && { backgroundColor: 'rgba(10,10,10,0.62)' },
+      ]}>
+      <Logo largura={96 * e} comCidade={false} />
+      <Texto
+        variante="display"
+        cor={Cores.verde}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={{ fontSize: (curto ? 150 : 84) * e, lineHeight: (curto ? 144 : 88) * e, marginTop: 6 * e, maxWidth: 280 * e }}>
+        {resumo.rotulo}
+      </Texto>
+      {resumo.nome && resumo.nome.toUpperCase() !== resumo.rotulo ? (
+        <Texto variante="subtitulo" numberOfLines={2} style={{ fontSize: 22 * e, lineHeight: 26 * e, textAlign: 'center' }}>
+          {resumo.nome}
+        </Texto>
+      ) : null}
+
+      <View style={{ flexDirection: 'row', gap: 22 * e, marginTop: 8 * e }}>
+        {numeros.map(([n, r, cor]) => (
+          <View key={r} style={{ alignItems: 'center' }}>
+            <Texto variante="numero" cor={cor ?? Cores.branco} numberOfLines={1} style={{ fontSize: 30 * e, lineHeight: 32 * e }}>
+              {n}
+            </Texto>
+            <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e }}>
+              {r}
+            </Texto>
+          </View>
+        ))}
+      </View>
+
+      {musculacao && resumo.melhorSerie ? (
+        <Texto variante="legenda" cor={Cores.cinza} numberOfLines={1} style={{ fontSize: 13 * e, lineHeight: 18 * e, marginTop: 2 * e }}>
+          Melhor série: {resumo.melhorSerie.exercicio.toLowerCase()} · {resumo.melhorSerie.kg.toLocaleString('pt-BR')} kg ×{' '}
+          {resumo.melhorSerie.reps}
+        </Texto>
+      ) : null}
+      {!musculacao && resumo.observacao ? (
+        <Texto variante="corpo" cor={Cores.cinza} numberOfLines={5} style={{ fontSize: 14 * e, lineHeight: 20 * e, textAlign: 'center' }}>
+          {resumo.observacao}
+        </Texto>
+      ) : null}
+
+      <View style={{ borderColor: Cores.verde, borderWidth: 1.5 * e, borderRadius: 99, paddingHorizontal: 12 * e, paddingVertical: 4 * e, marginTop: 6 * e }}>
+        <Texto variante="subtitulo" cor={Cores.branco} style={{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }}>
+          {info.nome}
+        </Texto>
+      </View>
+      {tipo !== 'adesivo' ? (
+        <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e, marginTop: 2 * e }}>
+          Fit One Manaus · Vila da Prata
+        </Texto>
+      ) : null}
+    </View>
+  );
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
@@ -107,76 +260,70 @@ export default function Compartilhar() {
         ))}
       </View>
 
-      <View style={estilos.palco} onLayout={aoMedir}>
+      <View style={estilos.palco} onLayout={aoMedirPalco}>
         {largura > 0 ? (
-          // Xadrez atrás do adesivo só para mostrar que o fundo é transparente (não sai na imagem)
-          <View style={[{ width: largura, height: altura, borderRadius: 18 * e, overflow: 'hidden' }, tipo === 'adesivo' && estilos.xadrez]}>
-            <View ref={alvo} collapsable={false} style={{ width: largura, height: altura, backgroundColor: fundo }}>
-              {comFoto ? (
-                <>
-                  <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                  {/* escurece o pé da foto para os números ficarem legíveis */}
-                  <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: altura * 0.58, backgroundColor: 'rgba(0,0,0,0.6)' }} />
-                </>
-              ) : null}
+          <View
+            style={[
+              { width: largura, height: altura, borderRadius: 18 * e, overflow: 'hidden' },
+              tipo === 'adesivo' && estilos.xadrez,
+              tipo === 'card' && { borderWidth: 1, borderColor: Cores.borda }, // só na tela, não sai na imagem
+            ]}>
+            <View ref={alvo} collapsable={false} style={{ width: largura, height: altura, backgroundColor: tipo === 'card' ? Cores.fundo : 'transparent' }}>
+              {comFoto ? <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
 
-              <View style={[estilos.conteudo, { padding: 24 * e, justifyContent: comFoto ? 'flex-end' : 'center', gap: 6 * e }]}>
-                <Logo largura={96 * e} comCidade={false} />
-                <Texto
-                  variante="display"
-                  cor={Cores.verde}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={{ fontSize: (curto ? 150 : 84) * e, lineHeight: (curto ? 144 : 88) * e, marginTop: 8 * e, maxWidth: largura - 48 * e }}>
-                  {resumo.rotulo}
-                </Texto>
-                {resumo.nome && resumo.nome.toUpperCase() !== resumo.rotulo ? (
-                  <Texto variante="subtitulo" numberOfLines={2} style={{ fontSize: 22 * e, lineHeight: 26 * e, textAlign: 'center' }}>
-                    {resumo.nome}
-                  </Texto>
-                ) : null}
-
-                <View style={{ flexDirection: 'row', gap: 22 * e, marginTop: 10 * e }}>
-                  {numeros.map(([n, r, cor]) => (
-                    <View key={r} style={{ alignItems: 'center' }}>
-                      <Texto variante="numero" cor={cor ?? Cores.branco} numberOfLines={1} style={{ fontSize: 30 * e, lineHeight: 32 * e }}>
-                        {n}
-                      </Texto>
-                      <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e }}>
-                        {r}
-                      </Texto>
-                    </View>
-                  ))}
-                </View>
-
-                {musculacao && resumo.melhorSerie ? (
-                  <Texto variante="legenda" cor={Cores.cinza} numberOfLines={1} style={{ fontSize: 13 * e, lineHeight: 18 * e, marginTop: 4 * e }}>
-                    Melhor série: {resumo.melhorSerie.exercicio.toLowerCase()} · {resumo.melhorSerie.kg.toLocaleString('pt-BR')} kg × {resumo.melhorSerie.reps}
-                  </Texto>
-                ) : null}
-                {!musculacao && resumo.observacao ? (
-                  <Texto variante="corpo" cor={Cores.cinza} numberOfLines={4} style={{ fontSize: 14 * e, lineHeight: 20 * e, textAlign: 'center', marginTop: 4 * e }}>
-                    {resumo.observacao}
-                  </Texto>
-                ) : null}
-
-                <View style={{ borderColor: Cores.verde, borderWidth: 1.5 * e, borderRadius: 99, paddingHorizontal: 12 * e, paddingVertical: 4 * e, marginTop: 8 * e }}>
-                  <Texto variante="subtitulo" cor={Cores.branco} style={{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }}>
-                    {info.nome}
-                  </Texto>
-                </View>
-                {tipo !== 'adesivo' ? (
-                  <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e, marginTop: 6 * e }}>
-                    Fit One Manaus · Vila da Prata
-                  </Texto>
-                ) : null}
-              </View>
+              <Animated.View
+                {...(mexe ? arrastar.panHandlers : {})}
+                style={{
+                  position: 'absolute',
+                  left: (largura - selo.w) / 2,
+                  top: (altura - selo.h) / 2,
+                  opacity: selo.h ? 1 : 0, // só aparece depois de medido
+                  transform: mexe
+                    ? [{ translateX: pos.x }, { translateY: pos.y }, { scale: Animated.multiply(escala, base) }]
+                    : [{ scale: base }],
+                }}>
+                {conteudoSelo}
+              </Animated.View>
             </View>
           </View>
         ) : null}
       </View>
 
       <View style={estilos.rodape}>
+        {mexe ? (
+          <View style={estilos.ajustes}>
+            <Pressable
+              hitSlop={8}
+              style={estilos.ajuste}
+              onPress={() => {
+                Haptics.selectionAsync();
+                aplicar(atual.current.x, atual.current.y, atual.current.s - 0.1);
+              }}>
+              <Texto variante="subtitulo">−</Texto>
+            </Pressable>
+            <Texto variante="legenda" style={{ flex: 1, textAlign: 'center' }}>
+              Arraste o selo · dois dedos para aumentar
+            </Texto>
+            <Pressable
+              hitSlop={8}
+              style={estilos.ajuste}
+              onPress={() => {
+                Haptics.selectionAsync();
+                aplicar(atual.current.x, atual.current.y, atual.current.s + 0.1);
+              }}>
+              <Texto variante="subtitulo">+</Texto>
+            </Pressable>
+            <Pressable hitSlop={8} style={[estilos.ajuste, { width: 'auto', paddingHorizontal: 12 }]} onPress={() => posicaoInicial(tipo, altura, base)}>
+              <Texto variante="legenda" cor={Cores.texto}>
+                Voltar
+              </Texto>
+            </Pressable>
+          </View>
+        ) : (
+          <Texto variante="legenda" style={{ textAlign: 'center' }}>
+            Sai só o selo, sem fundo: cole por cima da sua foto no Instagram e ajuste lá.
+          </Texto>
+        )}
         <Botao titulo={gerando ? 'Gerando...' : 'Compartilhar'} disabled={gerando} onPress={compartilhar} />
         {tipo === 'foto' ? (
           <Pressable onPress={escolherFoto} style={{ alignSelf: 'center' }} hitSlop={8}>
@@ -184,11 +331,7 @@ export default function Compartilhar() {
               Trocar foto
             </Texto>
           </Pressable>
-        ) : (
-          <Texto variante="legenda" style={{ textAlign: 'center' }}>
-            Abre o menu do celular: Stories, WhatsApp, salvar imagem...
-          </Texto>
-        )}
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -200,6 +343,15 @@ const estilos = StyleSheet.create({
   opcao: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 9 },
   palco: { flex: 1, alignItems: 'center', justifyContent: 'center', margin: Espaco.md },
   xadrez: { backgroundColor: '#2b2d2b', borderWidth: 1, borderColor: Cores.borda, borderStyle: 'dashed', borderRadius: Raio.lg },
-  conteudo: { flex: 1, alignItems: 'center' },
   rodape: { paddingHorizontal: Espaco.lg, gap: Espaco.sm, paddingBottom: Espaco.xs },
+  ajustes: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm },
+  ajuste: {
+    width: 44,
+    height: 40,
+    borderRadius: Raio.md,
+    borderWidth: 1.5,
+    borderColor: Cores.borda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

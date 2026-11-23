@@ -5,9 +5,9 @@
 insert into public.exercicios (nome, grupo, equipamento) values
   ('Supino reto na máquina', 'Peito', 'Máquina'),
   ('Supino inclinado na máquina', 'Peito', 'Máquina'),
-  ('Fly na máquina', 'Peito', 'Máquina'),
+  ('Voador', 'Peito', 'Máquina'),
   ('Puxada alta', 'Costas', 'Polia'),
-  ('Abdominal supra na máquina', 'Abdômen', 'Máquina')
+  ('Abdominal na máquina', 'Abdômen', 'Máquina')
 on conflict do nothing;
 
 do $$
@@ -54,19 +54,19 @@ begin
     for e in select * from (values
       ('A', 'Supino reto na máquina', 3, 8, 12, 90),
       ('A', 'Supino inclinado na máquina', 3, 8, 12, 90),
-      ('A', 'Fly na máquina', 3, 10, 12, 60),
+      ('A', 'Voador', 3, 10, 12, 60),
       ('A', 'Desenvolvimento na máquina', 3, 8, 12, 90),
       ('A', 'Elevação lateral', 3, 12, 15, 60),
       ('A', 'Tríceps na polia com barra', 3, 10, 12, 60),
-      ('A', 'Mergulho nas paralelas', 3, 8, 12, 90),
+      ('A', 'Paralela', 3, 8, 12, 90),
       ('B', 'Puxada alta', 3, 8, 12, 90),
       ('B', 'Remada na máquina', 3, 8, 12, 90),
-      ('B', 'Remada baixa no triângulo', 3, 8, 12, 90),
-      ('B', 'Crucifixo invertido', 3, 12, 15, 60),
+      ('B', 'Remada baixa', 3, 8, 12, 90),
+      ('B', 'Voador invertido', 3, 12, 15, 60),
       ('B', 'Rosca alternada com halteres', 3, 8, 12, 60),
       ('B', 'Rosca martelo', 3, 10, 12, 60),
-      ('B', 'Abdominal supra na máquina', 3, 15, 15, 45),
-      ('C', 'Agachamento hack', 3, 8, 12, 120),
+      ('B', 'Abdominal na máquina', 3, 15, 15, 45),
+      ('C', 'Hack', 3, 8, 12, 120),
       ('C', 'Leg press 45°', 3, 10, 12, 120),
       ('C', 'Cadeira extensora', 3, 10, 12, 60),
       ('C', 'Cadeira flexora', 3, 10, 12, 60),
@@ -74,7 +74,7 @@ begin
       ('E', 'Supino reto na máquina', 3, 8, 12, 90),
       ('E', 'Supino inclinado na máquina', 3, 8, 12, 90),
       ('E', 'Puxada alta', 3, 8, 12, 90),
-      ('E', 'Remada baixa no triângulo', 3, 8, 12, 90),
+      ('E', 'Remada baixa', 3, 8, 12, 90),
       ('E', 'Desenvolvimento na máquina', 3, 8, 12, 90),
       ('E', 'Rosca alternada com halteres', 3, 8, 12, 60),
       ('E', 'Tríceps na polia com barra', 3, 10, 12, 60),
