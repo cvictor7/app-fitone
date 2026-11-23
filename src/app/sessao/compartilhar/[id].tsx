@@ -52,7 +52,7 @@ export default function Compartilhar() {
 
   const info = Modalidades[resumo.modalidade] ?? Modalidades.livre;
   const adesivo = tipo === 'adesivo';
-  const destaque = resumo.letra ?? info.nome.charAt(0);
+  const ehDivisao = !!resumo.letra; // treino A/B/C da musculação
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
@@ -75,19 +75,36 @@ export default function Compartilhar() {
           collapsable={false}
           style={[estilos.card, adesivo ? estilos.cardAdesivo : estilos.cardCheio]}>
           <Logo largura={adesivo ? 86 : 96} comCidade={false} />
-          <Texto variante="display" cor={info.cor} style={{ fontSize: 150, lineHeight: 140 }}>
-            {destaque}
-          </Texto>
-          <Texto variante="subtitulo" style={{ fontSize: 28, lineHeight: 30, textAlign: 'center' }}>
-            {resumo.nome || info.nome}
-          </Texto>
-          <View style={estilos.numeros}>
-            <View style={estilos.numero}>
-              <Texto variante="numero" style={{ fontSize: 30, lineHeight: 32 }}>
+          {ehDivisao ? (
+            <>
+              <Texto variante="display" cor={info.cor} style={{ fontSize: 150, lineHeight: 140 }}>
+                {resumo.letra}
+              </Texto>
+              <Texto variante="subtitulo" style={{ fontSize: 28, lineHeight: 30, textAlign: 'center' }}>
+                {resumo.nome}
+              </Texto>
+            </>
+          ) : (
+            // Outras modalidades: nome grande na cor da modalidade e o tempo como número principal
+            <>
+              <Texto variante="display" cor={info.cor} style={{ fontSize: 72, lineHeight: 76, marginTop: Espaco.md }}>
+                {info.nome.toUpperCase()}
+              </Texto>
+              <Texto variante="display" style={{ fontSize: 96, lineHeight: 98 }}>
                 {textoDuracao(resumo.duracaoS)}
               </Texto>
-              <Texto variante="legenda">tempo</Texto>
-            </View>
+              <Texto variante="legenda">de treino</Texto>
+            </>
+          )}
+          <View style={estilos.numeros}>
+            {ehDivisao ? (
+              <View style={estilos.numero}>
+                <Texto variante="numero" style={{ fontSize: 30, lineHeight: 32 }}>
+                  {textoDuracao(resumo.duracaoS)}
+                </Texto>
+                <Texto variante="legenda">tempo</Texto>
+              </View>
+            ) : null}
             {resumo.volumeKg > 0 ? (
               <View style={estilos.numero}>
                 <Texto variante="numero" style={{ fontSize: 30, lineHeight: 32 }}>
@@ -105,11 +122,19 @@ export default function Compartilhar() {
               </View>
             ) : null}
           </View>
-          <View style={[estilos.selo, { backgroundColor: info.cor }]}>
-            <Texto variante="subtitulo" cor={Cores.preto} style={{ fontSize: 15, letterSpacing: 1 }}>
-              {info.nome}
-            </Texto>
-          </View>
+          {ehDivisao ? (
+            <View style={[estilos.selo, { backgroundColor: info.cor }]}>
+              <Texto variante="subtitulo" cor={Cores.preto} style={{ fontSize: 15, letterSpacing: 1 }}>
+                {info.nome}
+              </Texto>
+            </View>
+          ) : resumo.sensacao ? (
+            <View style={[estilos.selo, { backgroundColor: info.cor }]}>
+              <Texto variante="subtitulo" cor={Cores.preto} style={{ fontSize: 15, letterSpacing: 1 }}>
+                {['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'][resumo.sensacao - 1]}
+              </Texto>
+            </View>
+          ) : null}
           {!adesivo ? (
             <Texto variante="legenda" style={{ marginTop: Espaco.sm }}>
               Fit One Manaus · Vila da Prata

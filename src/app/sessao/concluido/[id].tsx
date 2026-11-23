@@ -50,20 +50,31 @@ export default function TreinoConcluido() {
           <Texto variante="rotulo" cor={cor}>
             TREINO FEITO
           </Texto>
-          <Texto variante="display" cor={cor} style={{ fontSize: 140, lineHeight: 132 }}>
-            {resumo.letra ?? '✓'}
-          </Texto>
-          <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
-            {resumo.nome || Modalidades[resumo.modalidade]?.nome}
-          </Texto>
+          {resumo.letra ? (
+            <>
+              <Texto variante="display" cor={cor} style={{ fontSize: 140, lineHeight: 132 }}>
+                {resumo.letra}
+              </Texto>
+              <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
+                {resumo.nome}
+              </Texto>
+            </>
+          ) : (
+            <Texto variante="display" cor={cor} style={{ fontSize: 72, lineHeight: 80, marginVertical: Espaco.md }}>
+              {(Modalidades[resumo.modalidade]?.nome ?? 'Treino').toUpperCase()}
+            </Texto>
+          )}
         </View>
 
         <View style={estilos.numeros}>
-          {[
-            [textoDuracao(resumo.duracaoS), 'duração'],
-            [textoVolume(resumo.volumeKg), 'kg de volume'],
-            [String(resumo.series), resumo.series === 1 ? 'série' : 'séries'],
-          ].map(([n, r]) => (
+          {(resumo.series > 0
+            ? [
+                [textoDuracao(resumo.duracaoS), 'duração'],
+                [textoVolume(resumo.volumeKg), 'kg de volume'],
+                [String(resumo.series), resumo.series === 1 ? 'série' : 'séries'],
+              ]
+            : [[textoDuracao(resumo.duracaoS), 'de treino']]
+          ).map(([n, r]) => (
             <View key={r} style={{ flex: 1, alignItems: 'center' }}>
               <Texto variante="numero" style={{ fontSize: 34, lineHeight: 36 }}>
                 {n}
