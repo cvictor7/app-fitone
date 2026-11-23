@@ -21,6 +21,7 @@ import {
   type ExercicioNoPlano,
   type PlanoEditavel,
 } from '@/lib/personal';
+import { rotuloTreino } from '@/lib/rotulo';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
@@ -155,7 +156,7 @@ export function EditorPlano({ id, aluno, modo }: Props) {
 
   function removerTreino() {
     if (plano!.treinos.length <= 1) return;
-    Alert.alert(`Apagar o treino ${treino.letra}?`, 'Os exercícios dele saem do plano.', [
+    Alert.alert(`Apagar o treino ${rotuloTreino(treino)}?`, 'Os exercícios dele saem do plano.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Apagar',
@@ -248,11 +249,11 @@ export function EditorPlano({ id, aluno, modo }: Props) {
           </View>
 
           <View style={{ gap: 4 }}>
-            <Texto variante="rotulo">{ehAluno ? 'ANOTAÇÕES (OPCIONAL)' : 'RECADO PARA O ALUNO (OPCIONAL)'}</Texto>
+            <Texto variante="rotulo">{ehAluno ? 'OBJETIVO / ANOTAÇÕES (OPCIONAL)' : 'OBJETIVO E ORIENTAÇÕES DO PLANO (OPCIONAL)'}</Texto>
             <Campo
               value={plano.observacao}
               onChangeText={(t) => mudar((p) => void (p.observacao = t))}
-              placeholder={ehAluno ? 'Ex.: subir carga a cada 2 semanas' : 'Ex.: suba a carga quando fizer o máximo de reps em todas as séries'}
+              placeholder={ehAluno ? 'Ex.: ganhar força; subir carga a cada 2 semanas' : 'Ex.: objetivo força e hipertrofia. Suba a carga quando fizer o máximo de reps em todas as séries.'}
               multiline
               style={{ minHeight: 64, fontSize: 15, paddingVertical: 12 }}
             />
@@ -265,15 +266,20 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                 key={t.chave}
                 onPress={() => setAba(i)}
                 style={[estilos.aba, i === aba && { backgroundColor: Modalidades[t.modalidade]?.cor ?? Cores.verde }]}>
-                <Texto variante="subtitulo" cor={i === aba ? Cores.preto : Cores.textoSecundario} style={{ fontSize: 20 }}>
-                  {t.letra}
+                <Texto
+                  variante="subtitulo"
+                  cor={i === aba ? Cores.preto : Cores.textoSecundario}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  style={{ fontSize: 17, paddingHorizontal: 4 }}>
+                  {rotuloTreino(t)}
                 </Texto>
               </Pressable>
             ))}
             {plano.treinos.length < 8 ? (
               <Pressable onPress={adicionarTreino} style={estilos.aba}>
                 <Texto variante="subtitulo" cor={Cores.verde} style={{ fontSize: 18 }}>
-                  + {proximaLetra(plano.treinos)}
+                  + Treino
                 </Texto>
               </Pressable>
             ) : null}
@@ -285,6 +291,29 @@ export function EditorPlano({ id, aluno, modo }: Props) {
               onChangeText={(t) => mudar((p) => void (p.treinos[aba].nome = t))}
               placeholder="Nome do treino (ex.: Costas e bíceps)"
               style={{ minHeight: 50, fontFamily: Fontes.titulo, fontSize: 22, textTransform: 'uppercase' }}
+            />
+            <View style={{ flexDirection: 'row', gap: Espaco.sm, alignItems: 'center' }}>
+              <View style={{ width: 130, gap: 4 }}>
+                <Texto variante="rotulo">NOME CURTO</Texto>
+                <Campo
+                  value={treino.rotulo}
+                  onChangeText={(t) => mudar((p) => void (p.treinos[aba].rotulo = t.slice(0, 10)))}
+                  placeholder={rotuloTreino({ ...treino, rotulo: '' })}
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  style={{ minHeight: 46, fontFamily: Fontes.titulo, fontSize: 20 }}
+                />
+              </View>
+              <Texto variante="legenda" style={{ flex: 1, marginTop: 18 }}>
+                Aparece grande no app (PUSH, PULL, LEGS...). Vazio = automático.
+              </Texto>
+            </View>
+            <Campo
+              value={treino.observacao}
+              onChangeText={(t) => mudar((p) => void (p.treinos[aba].observacao = t))}
+              placeholder="Orientação do dia (opcional). Ex.: foco na descida lenta; última série até a falha."
+              multiline
+              style={{ minHeight: 56, fontSize: 15, paddingVertical: 10 }}
             />
             <View style={estilos.modalidades}>
               {ListaModalidades.map((m) => {
@@ -417,14 +446,25 @@ export function EditorPlano({ id, aluno, modo }: Props) {
           ))}
 
           {treino.modalidade === 'musculacao' ? (
-            <Botao titulo="+ Exercício" tipo="secundario" onPress={() => setEscolhendo(true)} />
+            <>
+              <Botao titulo="+ Exercício" tipo="secundario" onPress={() => setEscolhendo(true)} />
+              <View style={{ gap: 4 }}>
+                <Texto variante="rotulo">CARDIO NO FIM (OPCIONAL)</Texto>
+                <Campo
+                  value={treino.cardio}
+                  onChangeText={(t) => mudar((p) => void (p.treinos[aba].cardio = t))}
+                  placeholder="Ex.: 40 min de esteira, inclinação 6"
+                  style={{ minHeight: 50, fontSize: 15 }}
+                />
+              </View>
+            </>
           ) : null}
 
           <View style={estilos.rodapeLinks}>
             {plano.treinos.length > 1 ? (
               <Pressable onPress={removerTreino} hitSlop={8}>
                 <Texto variante="corpo" cor={Cores.perigo}>
-                  Apagar treino {treino.letra}
+                  Apagar este treino
                 </Texto>
               </Pressable>
             ) : (

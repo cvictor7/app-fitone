@@ -15,7 +15,8 @@ import { supabase } from '@/lib/supabase';
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
 
 export default function TreinoConcluido() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, ver } = useLocalSearchParams<{ id: string; ver?: string }>();
+  const revendo = ver === '1'; // aberto pelo histórico
   const [resumo, setResumo] = useState<ResumoSessao | null>(null);
   const [sensacao, setSensacao] = useState<number | null>(null);
 
@@ -50,20 +51,22 @@ export default function TreinoConcluido() {
           <Texto variante="rotulo" cor={cor}>
             TREINO FEITO
           </Texto>
-          {resumo.letra ? (
-            <>
-              <Texto variante="display" cor={cor} style={{ fontSize: 140, lineHeight: 132 }}>
-                {resumo.letra}
-              </Texto>
-              <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
-                {resumo.nome}
-              </Texto>
-            </>
-          ) : (
-            <Texto variante="display" cor={cor} style={{ fontSize: 72, lineHeight: 80, marginVertical: Espaco.md }}>
-              {(Modalidades[resumo.modalidade]?.nome ?? 'Treino').toUpperCase()}
+          <Texto
+            variante="display"
+            cor={cor}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            style={{ fontSize: resumo.rotulo.length <= 2 ? 140 : 88, lineHeight: resumo.rotulo.length <= 2 ? 132 : 92 }}>
+            {resumo.rotulo}
+          </Texto>
+          {resumo.nome && resumo.nome.toUpperCase() !== resumo.rotulo ? (
+            <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
+              {resumo.nome}
             </Texto>
-          )}
+          ) : null}
+          <Texto variante="legenda">
+            {resumo.concluidaEm.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </Texto>
         </View>
 
         <View style={estilos.numeros}>
@@ -131,7 +134,12 @@ export default function TreinoConcluido() {
 
       <View style={estilos.rodape}>
         <Botao titulo="Compartilhar" cor={cor} onPress={() => router.push(`/sessao/compartilhar/${id}`)} />
-        <Botao titulo="Concluir" tipo="secundario" cor={cor} onPress={() => router.replace('/')} />
+        <Botao
+          titulo={revendo ? 'Voltar' : 'Concluir'}
+          tipo="secundario"
+          cor={cor}
+          onPress={() => (revendo ? router.back() : router.replace('/'))}
+        />
       </View>
     </SafeAreaView>
   );

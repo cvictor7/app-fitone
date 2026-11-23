@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -113,6 +114,18 @@ export default function Evolucao() {
           </>
         )}
 
+        <Pressable onPress={() => router.push('/historico')} style={estilos.botaoHistorico}>
+          <View style={{ flex: 1 }}>
+            <Texto variante="subtitulo" style={{ fontSize: 20 }}>
+              Histórico de treinos
+            </Texto>
+            <Texto variante="legenda">Todos os treinos feitos, de qualquer modalidade. Dá para compartilhar de novo.</Texto>
+          </View>
+          <Texto variante="subtitulo" cor={Cores.verde}>
+            ›
+          </Texto>
+        </Pressable>
+
         <View style={{ gap: Espaco.sm }}>
           <Texto variante="rotulo">ÚLTIMOS RECORDES</Texto>
           {recordes.length === 0 ? (
@@ -145,6 +158,16 @@ const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.xl, gap: Espaco.lg },
   resumo: { flexDirection: 'row' },
+  botaoHistorico: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Espaco.md,
+    backgroundColor: Cores.superficie,
+    borderRadius: Raio.lg,
+    padding: Espaco.md,
+    borderLeftWidth: 4,
+    borderLeftColor: Cores.verde,
+  },
   divisor: { width: 1, backgroundColor: Cores.borda, marginHorizontal: Espaco.md },
   chips: { gap: Espaco.sm },
   chip: {

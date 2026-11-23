@@ -75,7 +75,7 @@ export default function RegistroRapido() {
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
         <View style={{ gap: Espaco.sm }}>
           <View style={[estilos.faixa, { backgroundColor: info.cor }]} />
-          <Texto variante="titulo">{treinoDoPlano ? `Treino ${treinoDoPlano.letra} · ${info.nome}` : info.nome}</Texto>
+          <Texto variante="titulo">{treinoDoPlano ? treinoDoPlano.rotulo : info.nome}</Texto>
           <Texto variante="legenda">
             {treinoDoPlano ? treinoDoPlano.nome : 'Registre o treino que você fez.'}
           </Texto>

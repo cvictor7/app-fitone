@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 
 import type { Modalidade } from '@/constants/theme';
 import { useSessao } from '@/lib/sessao';
+import { rotuloTreino } from '@/lib/rotulo';
 import { supabase } from '@/lib/supabase';
 
 // Dados do aluno vindos do Supabase: plano ativo, treino de hoje, semana, recordes.
@@ -28,6 +29,9 @@ export type Treino = {
   letra: string;
   nome: string;
   modalidade: Modalidade;
+  rotulo: string; // palavra grande (PUSH, PULL...)
+  observacao: string | null; // orientação do personal para o dia
+  cardio: string | null; // cardio no fim do treino
   descricao: string | null; // treinos que não são musculação
   duracaoMin: number | null;
   distanciaKm: number | null;
@@ -42,6 +46,8 @@ export type Plano = {
   nome: string;
   observacao: string | null;
   personalNome: string;
+  inicio: Date | null;
+  fim: Date | null;
   proprio: boolean; // o aluno montou o próprio treino
   treinos: Treino[];
 };
@@ -196,9 +202,9 @@ export function useDadosAluno() {
       supabase
         .from('planos')
         .select(
-          `id, nome, observacao, personal_id,
+          `id, nome, observacao, personal_id, inicio, fim, criado_em,
            personal:profiles!planos_personal_id_fkey(nome),
-           treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km,
+           treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio,
              treino_exercicios(id, ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
                exercicio:exercicios(id, nome, grupo, midia_url, midias:exercicio_midias(video_url, instrucoes))))`,
         )
@@ -243,6 +249,9 @@ export function useDadosAluno() {
           letra: t.letra,
           nome: t.nome,
           modalidade: (t.modalidade ?? 'musculacao') as Modalidade,
+          rotulo: rotuloTreino(t),
+          observacao: t.observacao ?? null,
+          cardio: t.cardio ?? null,
           descricao: t.descricao ?? null,
           duracaoMin: t.duracao_min ?? null,
           distanciaKm: t.distancia_km === null || t.distancia_km === undefined ? null : Number(t.distancia_km),
@@ -274,6 +283,8 @@ export function useDadosAluno() {
         observacao: p.observacao,
         personalNome: p.personal_id === uid ? 'você' : p.personal?.nome ?? 'seu personal',
         proprio: p.personal_id === uid,
+        inicio: p.inicio ? new Date(`${p.inicio}T12:00:00`) : p.criado_em ? new Date(p.criado_em) : null,
+        fim: p.fim ? new Date(`${p.fim}T12:00:00`) : null,
         treinos,
       };
     }

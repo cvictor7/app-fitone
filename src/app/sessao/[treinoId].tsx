@@ -151,6 +151,7 @@ export default function ModoTreino() {
   const totalSeries = treino.exercicios.reduce((t, e) => t + e.series.length, 0);
   const seriesFeitas = treino.exercicios.reduce((t, e) => t + e.series.filter((s) => s.feita).length, 0);
   const tudoFeito = seriesFeitas === totalSeries;
+  const faltaCardio = !!treino.cardio && !treino.cardioFeito;
   const proximoExercicio = treino.exercicios.findIndex((e, i) => i !== treino.atual && !exercicioCompleto(e));
   const restanteDescanso = descansoFim === null ? 0 : (descansoFim - agora) / 1000;
 
@@ -322,7 +323,13 @@ export default function ModoTreino() {
   // botão grande do rodapé muda conforme o momento
   let tituloBotao = '';
   let acaoBotao: () => void = () => {};
-  if (tudoFeito) {
+  if (tudoFeito && faltaCardio) {
+    tituloBotao = 'Cardio feito ✓';
+    acaoBotao = () => {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      atualizar((t) => ({ ...t, cardioFeito: true }));
+    };
+  } else if (tudoFeito) {
     tituloBotao = salvando ? 'Salvando...' : 'Concluir treino';
     acaoBotao = concluir;
   } else if (proximaSerie >= 0) {
@@ -343,7 +350,7 @@ export default function ModoTreino() {
           </Texto>
         </Pressable>
         <Texto variante="subtitulo" style={{ fontSize: 20 }}>
-          Treino {treino.letra} · {mmss(tempo)}
+          {treino.rotulo ?? `Treino ${treino.letra}`} · {mmss(tempo)}
         </Texto>
         <Pressable onPress={concluir} hitSlop={12} style={[estilos.topoLado, { alignItems: 'flex-end' }]} disabled={salvando}>
           <Texto variante="corpo" cor={Cores.verde} style={{ fontFamily: Fontes.textoSemi }}>
@@ -392,6 +399,26 @@ export default function ModoTreino() {
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
+          {tudoFeito && treino.cardio ? (
+            <View style={estilos.cardio}>
+              <Texto variante="rotulo" cor={Cores.amarelo}>
+                {treino.cardioFeito ? 'CARDIO FEITO ✓' : 'FALTA O CARDIO'}
+              </Texto>
+              <Texto variante="subtitulo" style={{ fontSize: 20 }}>
+                {treino.cardio}
+              </Texto>
+            </View>
+          ) : null}
+
+          {treino.observacaoTreino && treino.atual === 0 && seriesFeitas === 0 ? (
+            <View style={estilos.cardio}>
+              <Texto variante="rotulo" cor={Cores.verde}>
+                ORIENTAÇÃO DO DIA
+              </Texto>
+              <Texto variante="corpo">{treino.observacaoTreino}</Texto>
+            </View>
+          ) : null}
+
           <View style={{ gap: 4 }}>
             <Texto variante="rotulo">
               EXERCÍCIO {treino.atual + 1} DE {treino.exercicios.length} · {ex.grupo.toUpperCase()}
@@ -661,6 +688,7 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cardio: { backgroundColor: Cores.superficie, borderRadius: Raio.md, padding: Espaco.md, gap: 4 },
   linhaSeries: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: Espaco.xs },
   descanso: {
     backgroundColor: Cores.superficie,

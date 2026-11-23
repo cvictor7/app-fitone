@@ -25,6 +25,21 @@ export default function Treinar() {
         </Texto>
 
         <View style={{ gap: Espaco.sm }}>
+          {dados.plano ? (
+            <View style={{ gap: 2 }}>
+              <Texto variante="subtitulo">{dados.plano.nome}</Texto>
+              <Texto variante="legenda">
+                {dados.plano.proprio ? 'Montado por você' : `Prescrito por ${dados.plano.personalNome}`}
+                {dados.plano.inicio ? ` em ${dados.plano.inicio.toLocaleDateString('pt-BR')}` : ''}
+                {dados.plano.fim ? ` · vence ${dados.plano.fim.toLocaleDateString('pt-BR')}` : ''}
+              </Texto>
+              {dados.plano.observacao ? (
+                <Texto variante="legenda" cor={Cores.verde}>
+                  {dados.plano.observacao}
+                </Texto>
+              ) : null}
+            </View>
+          ) : null}
           <View style={estilos.cabecalhoSecao}>
             <Texto variante="rotulo">MEUS TREINOS</Texto>
             {dados.plano ? (
@@ -59,11 +74,16 @@ export default function Treinar() {
                 <Pressable
                   key={t.id}
                   accessibilityRole="button"
-                  accessibilityLabel={`Treino ${t.letra}, ${t.nome}`}
+                  accessibilityLabel={`${t.rotulo}, ${t.nome}`}
                   onPress={() => router.push(`/treino/${t.id}`)}
                   style={({ pressed }) => [estilos.linhaTreino, hoje && { borderWidth: 1.5, borderColor: cor }, pressed && { opacity: 0.8 }]}>
-                  <Texto variante="display" cor={hoje || t.modalidade !== 'musculacao' ? cor : Cores.texto} style={estilos.letra}>
-                    {t.letra}
+                  <Texto
+                    variante="display"
+                    cor={hoje || t.modalidade !== 'musculacao' ? cor : Cores.texto}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={estilos.letra}>
+                    {t.rotulo}
                   </Texto>
                   <View style={{ flex: 1, gap: 2 }}>
                     {hoje && (
@@ -125,7 +145,7 @@ const estilos = StyleSheet.create({
     minHeight: 88,
   },
   linhaHoje: { borderWidth: 1.5, borderColor: Cores.verde },
-  letra: { fontSize: 56, lineHeight: 58, width: 44, textAlign: 'center' },
+  letra: { fontSize: 40, lineHeight: 44, width: 92 },
   grade: { flexDirection: 'row', flexWrap: 'wrap', gap: Espaco.sm },
   bloco: {
     width: '48.5%',

@@ -35,7 +35,11 @@ export type TreinoAtivo = {
   sessaoId: string; // gerado no celular; evita treino duplicado se reenviar
   treinoId: string;
   letra: string;
+  rotulo?: string; // palavra grande (PUSH, PULL...)
   nome: string;
+  observacaoTreino?: string | null; // orientação do personal para o dia
+  cardio?: string | null; // cardio no fim
+  cardioFeito?: boolean;
   gymId: string | null;
   iniciadoEm: string;
   atual: number; // índice do exercício na tela
@@ -113,7 +117,11 @@ export async function montarTreinoAtivo(treino: Treino, gymId: string | null): P
     sessaoId: Crypto.randomUUID(),
     treinoId: treino.id,
     letra: treino.letra,
+    rotulo: treino.rotulo,
     nome: treino.nome,
+    observacaoTreino: treino.observacao,
+    cardio: treino.cardio,
+    cardioFeito: false,
     gymId,
     iniciadoEm: new Date().toISOString(),
     atual: 0,
@@ -172,6 +180,7 @@ export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
       origem: 'app',
       iniciada_em: t.iniciadoEm,
       status: 'em_andamento',
+      observacao: t.cardio && t.cardioFeito ? `Cardio: ${t.cardio}` : null,
     },
     { onConflict: 'id' },
   );

@@ -66,6 +66,9 @@ export type TreinoNoPlano = {
   letra: string;
   nome: string;
   modalidade: Modalidade;
+  rotulo: string; // nome curto que aparece grande (vazio = automático)
+  observacao: string;
+  cardio: string;
   diasSemana: number[];
   exercicios: ExercicioNoPlano[]; // só musculação
   descricao: string; // outras modalidades (ex.: o WOD do Cross)
@@ -79,6 +82,9 @@ export const treinoVazio = (letra: string): TreinoNoPlano => ({
   letra,
   nome: `Treino ${letra}`,
   modalidade: 'musculacao',
+  rotulo: '',
+  observacao: '',
+  cardio: '',
   diasSemana: [],
   exercicios: [],
   descricao: '',
@@ -141,7 +147,7 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
       .from('planos')
       .select(
         `id, aluno_id, nome, fim, observacao, ativo,
-         treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km,
+         treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio,
            treino_exercicios(ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
              exercicio:exercicios(id, nome, grupo)))`,
       )
@@ -167,6 +173,9 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
         letra: t.letra,
         nome: t.nome,
         modalidade: t.modalidade ?? 'musculacao',
+        rotulo: t.rotulo ?? '',
+        observacao: t.observacao ?? '',
+        cardio: t.cardio ?? '',
         descricao: t.descricao ?? '',
         duracaoMin: t.duracao_min ? String(t.duracao_min) : '',
         distanciaKm: t.distancia_km ? String(Number(t.distancia_km)).replace('.', ',') : '',
@@ -197,15 +206,15 @@ export function validarPlano(p: PlanoEditavel): string | null {
   for (const t of p.treinos) {
     if (!t.nome.trim()) return `Dê um nome para o treino ${t.letra}.`;
     if (t.modalidade !== 'musculacao' && !t.descricao.trim() && !num(t.duracaoMin))
-      return `Treino ${t.letra}: escreva o que fazer ou a duração.`;
+      return `${t.nome}: escreva o que fazer ou a duração.`;
     if (t.modalidade !== 'musculacao') continue;
     for (const e of t.exercicios) {
       const s = num(e.series);
       const rmin = num(e.repsMin);
       const rmax = num(e.repsMax) ?? rmin;
-      if (!s || s < 1 || s > 20) return `${e.nome} (treino ${t.letra}): séries entre 1 e 20.`;
-      if (!rmin || rmin < 1) return `${e.nome} (treino ${t.letra}): informe as repetições.`;
-      if (rmax !== null && rmax < rmin) return `${e.nome} (treino ${t.letra}): reps máximas menores que as mínimas.`;
+      if (!s || s < 1 || s > 20) return `${e.nome} (${t.nome}): séries entre 1 e 20.`;
+      if (!rmin || rmin < 1) return `${e.nome} (${t.nome}): informe as repetições.`;
+      if (rmax !== null && rmax < rmin) return `${e.nome} (${t.nome}): reps máximas menores que as mínimas.`;
     }
   }
   return null;
@@ -262,6 +271,9 @@ export async function salvarPlano(p: PlanoEditavel, gymId: string, personalId: s
       ordem: i + 1,
       dias_semana: t.diasSemana,
       modalidade: t.modalidade,
+      rotulo: t.rotulo.trim().slice(0, 10) || null,
+      observacao: t.observacao.trim() || null,
+      cardio: t.modalidade === 'musculacao' ? t.cardio.trim() || null : null,
       descricao: t.modalidade === 'musculacao' ? null : t.descricao.trim() || null,
       duracao_min: t.modalidade === 'musculacao' ? null : num(t.duracaoMin),
       distancia_km: t.modalidade === 'corrida' || t.modalidade === 'bike' ? num(t.distanciaKm) : null,

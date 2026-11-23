@@ -79,26 +79,30 @@ export default function Hoje() {
           <View style={{ gap: Espaco.md }}>
             {dados.treinosDeHoje.map((t, idx) => {
               const feito = dados.feitosHoje.find((f) => f.treinoId === t.id);
-              if (feito) return <CardFeitoHoje key={t.id} sessaoId={feito.id} letra={t.letra} nome={t.nome} />;
+              if (feito) return <CardFeitoHoje key={t.id} sessaoId={feito.id} letra={t.rotulo} nome={t.nome} />;
               const info = infoModalidade(t.modalidade);
               const total = dados.treinosDeHoje.length;
               const primeiroPendente = dados.treinosDeHoje.findIndex((x) => !dados.feitosHoje.some((f) => f.treinoId === x.id)) === idx;
               return (
                 // A letra gigante é o elemento marcante, como o "1" dentro do ONE do logo
                 <View key={t.id} style={[estilos.treinoDia, { borderLeftColor: info.cor }]}>
-                  <View style={estilos.treinoTopo}>
-                    <View style={{ flex: 1, gap: Espaco.xs }}>
-                      <Texto variante="rotulo" cor={info.cor}>
-                        {total > 1 ? `TREINO DE HOJE · ${idx + 1} DE ${total}` : 'TREINO DE HOJE'}
-                      </Texto>
-                      <Texto variante="subtitulo">{t.nome}</Texto>
-                      <Texto variante="legenda">
-                        {resumoTreino(t, info.nome)} · último: {textoQuando(t.ultimaVez)}
-                      </Texto>
-                    </View>
-                    <Texto variante="display" cor={info.cor} style={estilos.letra}>
-                      {t.letra}
+                  <View style={{ gap: Espaco.xs }}>
+                    <Texto variante="rotulo" cor={info.cor}>
+                      {total > 1 ? `TREINO DE HOJE · ${idx + 1} DE ${total}` : 'TREINO DE HOJE'}
                     </Texto>
+                    <Texto variante="display" cor={info.cor} numberOfLines={1} adjustsFontSizeToFit style={estilos.rotulo}>
+                      {t.rotulo}
+                    </Texto>
+                    {t.nome.toUpperCase() !== t.rotulo ? <Texto variante="subtitulo">{t.nome}</Texto> : null}
+                    <Texto variante="legenda">
+                      {resumoTreino(t, info.nome)}
+                      {t.cardio ? ' + cardio' : ''} · último: {textoQuando(t.ultimaVez)}
+                    </Texto>
+                    {t.observacao ? (
+                      <Texto variante="legenda" cor={info.cor}>
+                        {t.observacao}
+                      </Texto>
+                    ) : null}
                   </View>
                   <Botao titulo="Começar treino" cor={info.cor} onPress={() => router.push(`/treino/${t.id}`)} />
                   {primeiroPendente ? (
@@ -219,8 +223,7 @@ const estilos = StyleSheet.create({
     borderRadius: Raio.md,
     padding: Espaco.md,
   },
-  treinoTopo: { flexDirection: 'row', alignItems: 'flex-start' },
-  letra: { fontSize: 120, lineHeight: 110, marginTop: -8, marginRight: -4 },
+  rotulo: { fontSize: 84, lineHeight: 84, marginBottom: -4 },
   linkTreinos: { alignSelf: 'center', paddingVertical: Espaco.xs },
   linhaNumeros: { flexDirection: 'row', alignItems: 'stretch' },
   numeroBloco: { flex: 1, gap: 2 },

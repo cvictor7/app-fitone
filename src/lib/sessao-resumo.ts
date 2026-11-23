@@ -1,3 +1,4 @@
+import { rotuloTreino } from '@/lib/rotulo';
 import { supabase } from '@/lib/supabase';
 import type { Modalidade } from '@/constants/theme';
 
@@ -7,6 +8,7 @@ export type ResumoSessao = {
   id: string;
   modalidade: Modalidade;
   letra: string | null;
+  rotulo: string; // palavra grande do treino (PUSH, HYBRID...)
   nome: string;
   duracaoS: number;
   volumeKg: number;
@@ -22,7 +24,7 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
   const [rs, rr, rc] = await Promise.all([
     supabase
       .from('sessoes')
-      .select('id, modalidade, duracao_s, volume_kg, sensacao, observacao, concluida_em, treino:treinos(letra, nome)')
+      .select('id, modalidade, duracao_s, volume_kg, sensacao, observacao, concluida_em, treino:treinos(letra, nome, rotulo, modalidade)')
       .eq('id', id)
       .maybeSingle(),
     supabase
@@ -46,6 +48,7 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
     id: s.id,
     modalidade: s.modalidade,
     letra: s.treino?.letra ?? null,
+    rotulo: rotuloTreino({ ...(s.treino ?? {}), modalidade: s.treino?.modalidade ?? s.modalidade }),
     nome: s.treino?.nome ?? '',
     duracaoS: s.duracao_s ?? 0,
     volumeKg: Number(s.volume_kg ?? 0),

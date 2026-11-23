@@ -3,6 +3,8 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BarraTopo } from '@/components/barra-topo';
+import { HistoricoDoTreino } from '@/components/historico-treino';
+import { useSessao } from '@/lib/sessao';
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
@@ -15,6 +17,7 @@ import { infoModalidade } from '@/constants/theme';
 export default function PreviaTreino() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const dados = useDadosAluno();
+  const { sessao } = useSessao();
   const treino = dados.plano?.treinos.find((t) => t.id === id);
 
   if (dados.carregando) {
@@ -47,11 +50,11 @@ export default function PreviaTreino() {
 
       <ScrollView contentContainerStyle={estilos.conteudo} showsVerticalScrollIndicator={false}>
         <View style={estilos.cabecalho}>
-          <Texto variante="display" cor={info.cor} style={estilos.letra}>
-            {treino.letra}
-          </Texto>
           <View style={{ flex: 1, gap: 4 }}>
-            <Texto variante="subtitulo">{treino.nome}</Texto>
+            <Texto variante="display" cor={info.cor} numberOfLines={1} adjustsFontSizeToFit style={estilos.letra}>
+              {treino.rotulo}
+            </Texto>
+            {treino.nome.toUpperCase() !== treino.rotulo ? <Texto variante="subtitulo">{treino.nome}</Texto> : null}
             <Texto variante="legenda">
               {ehMusculacao ? `${treino.exercicios.length} exercícios · ${totalSeries} séries` : resumoTreino(treino, info.nome)}
             </Texto>
@@ -61,12 +64,13 @@ export default function PreviaTreino() {
           </View>
         </View>
 
-        {dados.plano?.observacao ? (
-          <View style={estilos.recado}>
-            <Texto variante="rotulo" cor={Cores.verde}>
-              RECADO DO PERSONAL
+        {treino.observacao || dados.plano?.observacao ? (
+          <View style={[estilos.recado, { borderLeftColor: info.cor }]}>
+            <Texto variante="rotulo" cor={info.cor}>
+              {dados.plano?.proprio ? 'ANOTAÇÕES' : 'ORIENTAÇÃO DO PERSONAL'}
             </Texto>
-            <Texto variante="corpo">{dados.plano.observacao}</Texto>
+            {treino.observacao ? <Texto variante="corpo">{treino.observacao}</Texto> : null}
+            {dados.plano?.observacao ? <Texto variante="legenda">{dados.plano.observacao}</Texto> : null}
           </View>
         ) : null}
 
@@ -103,11 +107,22 @@ export default function PreviaTreino() {
           ))}
         </View>
         ) : null}
+
+        {sessao ? <HistoricoDoTreino alunoId={sessao.user.id} treinoId={treino.id} cor={info.cor} musculacao={ehMusculacao} /> : null}
+
+        {ehMusculacao && treino.cardio ? (
+          <View style={[estilos.recado, { borderLeftColor: Cores.amarelo }]}>
+            <Texto variante="rotulo" cor={Cores.amarelo}>
+              CARDIO NO FIM
+            </Texto>
+            <Texto variante="corpo">{treino.cardio}</Texto>
+          </View>
+        ) : null}
       </ScrollView>
 
       <View style={estilos.rodape}>
         <Botao
-          titulo={`Começar treino ${treino.letra}`}
+          titulo="Começar treino"
           cor={info.cor}
           onPress={() => router.push(rotaComecar(treino) as any)}
         />
@@ -120,7 +135,7 @@ const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.lg, gap: Espaco.lg },
   cabecalho: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md },
-  letra: { fontSize: 104, lineHeight: 100 },
+  letra: { fontSize: 84, lineHeight: 86 },
   recado: {
     backgroundColor: Cores.superficie,
     borderRadius: Raio.md,

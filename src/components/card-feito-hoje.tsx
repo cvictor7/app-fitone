@@ -40,16 +40,14 @@ export function CardFeitoHoje({ sessaoId, letra, nome }: Props) {
 
   return (
     <View style={[estilos.card, { borderLeftColor: info.cor }]}>
-      <View style={estilos.topo}>
-        <View style={{ flex: 1, gap: 4 }}>
-          <Texto variante="rotulo" cor={info.cor}>
-            TREINO DE HOJE FEITO ✓
-          </Texto>
-          <Texto variante="subtitulo">{nome || r.nome || info.nome}</Texto>
-        </View>
-        <Texto variante="display" cor={info.cor} style={estilos.letra}>
-          {letra ?? r.letra ?? '✓'}
+      <View style={{ gap: 2 }}>
+        <Texto variante="rotulo" cor={info.cor}>
+          TREINO DE HOJE FEITO ✓
         </Texto>
+        <Texto variante="display" cor={info.cor} numberOfLines={1} adjustsFontSizeToFit style={estilos.rotulo}>
+          {letra ?? r.rotulo}
+        </Texto>
+        {nome && nome.toUpperCase() !== (letra ?? '') ? <Texto variante="subtitulo">{nome}</Texto> : null}
       </View>
 
       <View style={estilos.numeros}>
@@ -75,8 +73,13 @@ export function CardFeitoHoje({ sessaoId, letra, nome }: Props) {
       ) : null}
       {r.recordes.length > 0 ? (
         <View style={estilos.linha}>
-          <Texto variante="legenda" cor={Cores.amarelo} style={{ flex: 1 }}>
-            {r.recordes.length === 1 ? '1 recorde novo' : `${r.recordes.length} recordes novos`}: {r.recordes.map((x) => x.exercicio.toLowerCase()).join(', ')}
+          <Texto variante="legenda" cor={Cores.amarelo} style={{ flex: 1 }} numberOfLines={2}>
+            {r.recordes.length === 1 ? '1 recorde novo' : `${r.recordes.length} recordes novos`}:{' '}
+            {r.recordes
+              .slice(0, 2)
+              .map((x) => x.exercicio.toLowerCase())
+              .join(', ')}
+            {r.recordes.length > 2 ? ` e mais ${r.recordes.length - 2}` : ''}
           </Texto>
         </View>
       ) : null}
@@ -108,8 +111,7 @@ const estilos = StyleSheet.create({
     gap: Espaco.md,
     overflow: 'hidden',
   },
-  topo: { flexDirection: 'row', alignItems: 'flex-start' },
-  letra: { fontSize: 96, lineHeight: 90, marginTop: -6 },
+  rotulo: { fontSize: 64, lineHeight: 66 },
   numeros: { flexDirection: 'row' },
   linha: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, borderTopWidth: 1, borderTopColor: Cores.borda, paddingTop: Espaco.sm },
 });
