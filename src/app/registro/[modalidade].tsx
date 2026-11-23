@@ -12,7 +12,7 @@ import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
 // Registro rápido das modalidades que ainda não têm tela própria (Fase 1).
-// Na Fase 2: Cross e Hyrox ganham timers; Corrida e Bike vêm do relógio.
+// Na Fase 2: Cross e Hybrid ganham timers; Corrida e Bike vêm do relógio.
 
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
 

@@ -4,7 +4,7 @@ import { Texto } from '@/components/texto';
 import { Cores, Modalidades } from '@/constants/theme';
 
 // Bolinha com as iniciais. A cor sai do nome, para cada pessoa ter sempre a mesma.
-const CORES = [Cores.verde, Modalidades.hybrid.cor, Modalidades.cross.cor, Modalidades.corrida.cor, Modalidades.bike.cor, Modalidades.hyrox.cor];
+const CORES = [Cores.verde, Modalidades.hybrid.cor, Modalidades.cross.cor, Modalidades.corrida.cor, Modalidades.bike.cor, Cores.amarelo];
 
 export function iniciais(nome: string) {
   const p = nome.trim().split(/\s+/).filter(Boolean);

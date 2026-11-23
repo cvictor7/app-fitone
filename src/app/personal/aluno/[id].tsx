@@ -7,7 +7,7 @@ import { Avatar } from '@/components/avatar';
 import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
-import { Cores, Espaco, Modalidades, Raio, type Modalidade } from '@/constants/theme';
+import { Cores, Espaco, Modalidades, Raio, type Modalidade, infoModalidade } from '@/constants/theme';
 import { textoQuando } from '@/lib/dados';
 import { listarAlunos, listarModelos, usarModeloEmAluno, type AlunoResumo } from '@/lib/personal';
 import { textoDuracao } from '@/lib/sessao-resumo';
@@ -199,7 +199,7 @@ export default function FichaAluno() {
             ) : (
               <View style={estilos.lista}>
                 {sessoes.map((s, i) => {
-                  const info = Modalidades[s.modalidade] ?? Modalidades.livre;
+                  const info = infoModalidade(s.modalidade);
                   return (
                     <View key={s.id} style={[estilos.linha, i > 0 && estilos.separador]}>
                       <View style={[estilos.selo, { backgroundColor: info.cor }]}>

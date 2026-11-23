@@ -9,7 +9,7 @@ import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
-import { Cores, Espaco, Modalidades, Raio } from '@/constants/theme';
+import { Cores, Espaco, Modalidades, Raio, infoModalidade } from '@/constants/theme';
 import { buscarResumo, textoDuracao, textoVolume, type ResumoSessao } from '@/lib/sessao-resumo';
 
 // Compartilhar o treino: vira imagem e abre o menu do celular
@@ -50,7 +50,7 @@ export default function Compartilhar() {
     );
   }
 
-  const info = Modalidades[resumo.modalidade] ?? Modalidades.livre;
+  const info = infoModalidade(resumo.modalidade);
   const adesivo = tipo === 'adesivo';
   const ehDivisao = !!resumo.letra; // treino A/B/C da musculação
 
@@ -121,7 +121,7 @@ export default function Compartilhar() {
             ) : null}
             {resumo.recordes.length > 0 ? (
               <View style={estilos.numero}>
-                <Texto variante="numero" cor={Modalidades.hyrox.cor} style={{ fontSize: 30, lineHeight: 32 }}>
+                <Texto variante="numero" cor={Cores.amarelo} style={{ fontSize: 30, lineHeight: 32 }}>
                   {resumo.recordes.length}
                 </Texto>
                 <Texto variante="legenda">{resumo.recordes.length === 1 ? 'recorde' : 'recordes'}</Texto>

@@ -7,7 +7,7 @@ import { Botao } from '@/components/botao';
 import { ChipModalidade } from '@/components/chip-modalidade';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
-import { Cores, Espaco, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
+import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
 import { META_SEMANAL, textoQuando, useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 import { lerTreinoAtivo, type TreinoAtivo } from '@/lib/treino-ativo';
@@ -154,12 +154,12 @@ export default function Hoje() {
                 <View
                   style={[
                     estilos.dia,
-                    d.feitos.length > 0 && { borderColor: Modalidades[d.feitos[0]].cor },
+                    d.feitos.length > 0 && { borderColor: infoModalidade(d.feitos[0]).cor },
                     d.hoje && { borderColor: Cores.branco },
                   ]}>
                   {/* dois treinos no dia = bolinha dividida com as cores das modalidades */}
                   {d.feitos.slice(0, 3).map((m, j) => (
-                    <View key={j} style={{ flex: 1, backgroundColor: Modalidades[m].cor }} />
+                    <View key={j} style={{ flex: 1, backgroundColor: infoModalidade(m).cor }} />
                   ))}
                 </View>
                 <Texto variante="legenda" cor={d.hoje ? Cores.branco : Cores.textoApagado}>

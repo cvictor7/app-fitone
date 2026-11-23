@@ -93,7 +93,7 @@ export default function TreinoConcluido() {
 
         {resumo.recordes.length > 0 ? (
           <View style={estilos.recordes}>
-            <Texto variante="rotulo" cor={Modalidades.hyrox.cor}>
+            <Texto variante="rotulo" cor={Cores.amarelo}>
               {resumo.recordes.length === 1 ? '1 RECORDE NOVO' : `${resumo.recordes.length} RECORDES NOVOS`}
             </Texto>
             {resumo.recordes.map((r) => (
@@ -145,7 +145,7 @@ const estilos = StyleSheet.create({
     backgroundColor: Cores.superficie,
     borderRadius: Raio.lg,
     borderLeftWidth: 4,
-    borderLeftColor: Modalidades.hyrox.cor,
+    borderLeftColor: Cores.amarelo,
     padding: Espaco.md,
     gap: Espaco.sm,
   },

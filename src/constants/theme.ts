@@ -28,7 +28,6 @@ export type Modalidade =
   | 'cross'
   | 'corrida'
   | 'bike'
-  | 'hyrox'
   | 'livre';
 
 // Cada modalidade tem sua cor. A ordem aqui é a ordem em que aparecem no app.
@@ -38,11 +37,15 @@ export const Modalidades: Record<Modalidade, { nome: string; cor: string }> = {
   cross: { nome: 'Cross', cor: '#FF5E7A' },
   corrida: { nome: 'Corrida', cor: '#FF8A3D' },
   bike: { nome: 'Bike', cor: '#3DD6C4' },
-  hyrox: { nome: 'Hyrox', cor: '#FFC83D' },
   livre: { nome: 'Livre', cor: '#A9AEA9' },
 };
 
 export const ListaModalidades = Object.keys(Modalidades) as Modalidade[];
+
+// Busca segura: modalidade que não existe mais (ex.: sessões antigas) vira "Livre"
+export function infoModalidade(m: string | null | undefined) {
+  return (m && (Modalidades as Record<string, { nome: string; cor: string }>)[m]) || Modalidades.livre;
+}
 
 // Nomes das fontes (iguais às chaves carregadas em src/app/_layout.tsx)
 export const Fontes = {
