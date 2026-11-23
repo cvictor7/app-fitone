@@ -100,7 +100,8 @@ end;
 $$;
 
 -- Feed da academia (paginado por data), com nome abreviado e "Boa!"
-create or replace function public.feed_comunidade(p_gym uuid, p_antes timestamptz default null, p_limite integer default 20)
+drop function if exists public.feed_comunidade(uuid, timestamptz, integer); -- deixa rodar de novo depois do 0010
+create function public.feed_comunidade(p_gym uuid, p_antes timestamptz default null, p_limite integer default 20)
 returns table (
   id uuid, autor_id uuid, autor text, eu boolean, criado_em timestamptz, legenda text,
   modalidade public.modalidade, rotulo text, concluida_em timestamptz, duracao_s integer,
