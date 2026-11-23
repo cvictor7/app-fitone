@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AtalhosConversa } from '@/components/atalhos-conversa';
+import { AvisosAcademia } from '@/components/avisos-academia';
 import { Botao } from '@/components/botao';
 import { CardFeitoHoje } from '@/components/card-feito-hoje';
 import { ChipModalidade } from '@/components/chip-modalidade';
@@ -51,6 +52,7 @@ export default function Hoje() {
         <Texto variante="titulo">Bora, {primeiroNome}</Texto>
 
         <AtalhosConversa soNaoLidas />
+        <AvisosAcademia />
 
         {emAndamento ? (
           <Pressable onPress={() => router.push(`/sessao/${emAndamento.treinoId}`)} style={estilos.andamento}>
