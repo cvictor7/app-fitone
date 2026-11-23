@@ -94,6 +94,12 @@ export default function Compartilhar() {
                 {textoDuracao(resumo.duracaoS)}
               </Texto>
               <Texto variante="legenda">de treino</Texto>
+              {resumo.observacao ? (
+                // O que foi feito (ex.: o WOD do Cross), escrito pelo aluno no registro
+                <Texto variante="corpo" numberOfLines={5} style={estilos.observacao}>
+                  {resumo.observacao}
+                </Texto>
+              ) : null}
             </>
           )}
           <View style={estilos.numeros}>
@@ -179,6 +185,7 @@ const estilos = StyleSheet.create({
   cardAdesivo: { backgroundColor: 'transparent' },
   numeros: { flexDirection: 'row', gap: Espaco.lg, marginVertical: Espaco.sm },
   numero: { alignItems: 'center' },
+  observacao: { textAlign: 'center', marginTop: Espaco.sm, paddingHorizontal: Espaco.sm, color: Cores.textoSecundario, fontSize: 15, lineHeight: 21 },
   selo: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 99 },
   rodape: { paddingHorizontal: Espaco.lg, gap: Espaco.sm, paddingBottom: Espaco.xs },
 });

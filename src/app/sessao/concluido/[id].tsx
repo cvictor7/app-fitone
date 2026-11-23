@@ -84,6 +84,13 @@ export default function TreinoConcluido() {
           ))}
         </View>
 
+        {resumo.observacao ? (
+          <View style={estilos.obs}>
+            <Texto variante="rotulo">O QUE VOCÊ FEZ</Texto>
+            <Texto variante="corpo">{resumo.observacao}</Texto>
+          </View>
+        ) : null}
+
         {resumo.recordes.length > 0 ? (
           <View style={estilos.recordes}>
             <Texto variante="rotulo" cor={Modalidades.hyrox.cor}>
@@ -142,6 +149,7 @@ const estilos = StyleSheet.create({
     padding: Espaco.md,
     gap: Espaco.sm,
   },
+  obs: { backgroundColor: Cores.superficie, borderRadius: Raio.lg, padding: Espaco.md, gap: Espaco.xs },
   linhaRecorde: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md },
   sensacoes: { flexDirection: 'row', justifyContent: 'space-between' },
   sensacao: {

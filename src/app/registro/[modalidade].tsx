@@ -111,11 +111,11 @@ export default function RegistroRapido() {
         </View>
 
         <View style={{ gap: Espaco.sm }}>
-          <Texto variante="rotulo">OBSERVAÇÃO (OPCIONAL)</Texto>
+          <Texto variante="rotulo">O QUE VOCÊ FEZ (OPCIONAL)</Texto>
           <TextInput
             value={observacao}
             onChangeText={setObservacao}
-            placeholder="Ex.: WOD com burpee e remo"
+            placeholder="O que você fez? Ex.: AMRAP 12 min: 10 burpees, 15 KB swing, 200 m remo. Aparece no card de compartilhar."
             placeholderTextColor={Cores.textoApagado}
             multiline
             style={estilos.campo}

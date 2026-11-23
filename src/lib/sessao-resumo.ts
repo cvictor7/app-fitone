@@ -12,6 +12,7 @@ export type ResumoSessao = {
   volumeKg: number;
   series: number;
   sensacao: number | null;
+  observacao: string | null;
   concluidaEm: Date;
   recordes: { exercicio: string; valorKg: number }[];
 };
@@ -20,7 +21,7 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
   const [rs, rr, rc] = await Promise.all([
     supabase
       .from('sessoes')
-      .select('id, modalidade, duracao_s, volume_kg, sensacao, concluida_em, treino:treinos(letra, nome)')
+      .select('id, modalidade, duracao_s, volume_kg, sensacao, observacao, concluida_em, treino:treinos(letra, nome)')
       .eq('id', id)
       .maybeSingle(),
     supabase
@@ -41,6 +42,7 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
     volumeKg: Number(s.volume_kg ?? 0),
     series: rc.count ?? 0,
     sensacao: s.sensacao,
+    observacao: s.observacao ?? null,
     concluidaEm: new Date(s.concluida_em),
     recordes: ((rr.data ?? []) as any[]).map((r) => ({ exercicio: r.exercicio?.nome ?? '', valorKg: Number(r.valor) })),
   };
