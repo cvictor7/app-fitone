@@ -15,6 +15,7 @@ export type ResumoSessao = {
   observacao: string | null;
   concluidaEm: Date;
   recordes: { exercicio: string; valorKg: number }[];
+  melhorSerie: { exercicio: string; kg: number; reps: number } | null; // maior carga do treino
 };
 
 export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
@@ -29,8 +30,16 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
       .select('valor, exercicio:exercicios(nome), serie:series!inner(sessao_id)')
       .eq('serie.sessao_id', id)
       .eq('tipo', 'carga_max'),
-    supabase.from('series').select('id', { count: 'exact', head: true }).eq('sessao_id', id),
+    supabase.from('series').select('carga_kg, reps, exercicio:exercicios(nome)').eq('sessao_id', id),
   ]);
+  let melhorSerie: ResumoSessao['melhorSerie'] = null;
+  for (const x of (rc.data ?? []) as any[]) {
+    const kg = Number(x.carga_kg ?? 0);
+    const reps = Number(x.reps ?? 0);
+    if (kg > 0 && (!melhorSerie || kg > melhorSerie.kg || (kg === melhorSerie.kg && reps > melhorSerie.reps))) {
+      melhorSerie = { exercicio: x.exercicio?.nome ?? '', kg, reps };
+    }
+  }
   const s = rs.data as any;
   if (!s) return null;
   return {
@@ -40,11 +49,12 @@ export async function buscarResumo(id: string): Promise<ResumoSessao | null> {
     nome: s.treino?.nome ?? '',
     duracaoS: s.duracao_s ?? 0,
     volumeKg: Number(s.volume_kg ?? 0),
-    series: rc.count ?? 0,
+    series: (rc.data ?? []).length,
     sensacao: s.sensacao,
     observacao: s.observacao ?? null,
     concluidaEm: new Date(s.concluida_em),
     recordes: ((rr.data ?? []) as any[]).map((r) => ({ exercicio: r.exercicio?.nome ?? '', valorKg: Number(r.valor) })),
+    melhorSerie,
   };
 }
 

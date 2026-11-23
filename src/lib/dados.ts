@@ -106,6 +106,11 @@ export function textoKg(kg: number | null | undefined) {
 // depois do último feito. O app não sugere troca: o aluno escolhe outro na aba Treinar se quiser.
 export function escolherTreinoDeHoje(treinos: Treino[], hoje = new Date()): Treino | null {
   if (treinos.length === 0) return null;
+  // Já treinou um treino do plano hoje (mesmo trocando o do dia)? A Hoje mostra esse, como feito
+  const feitoHoje = treinos
+    .filter((t) => t.ultimaVez && mesmoDia(t.ultimaVez, hoje))
+    .sort((a, b) => b.ultimaVez!.getTime() - a.ultimaVez!.getTime())[0];
+  if (feitoHoje) return feitoHoje;
   const marcado = treinos.find((t) => t.diasSemana.includes(hoje.getDay()));
   if (marcado) return marcado;
   const feitos = treinos.filter((t) => t.ultimaVez).sort((a, b) => b.ultimaVez!.getTime() - a.ultimaVez!.getTime());
@@ -144,6 +149,7 @@ type Estado = {
   treinosNaSemana: number;
   sequencia: number;
   recordes: Recorde[];
+  feitosHoje: { id: string; treinoId: string | null; modalidade: Modalidade }[]; // mais recente primeiro
 };
 
 const VAZIO: Estado = {
@@ -155,6 +161,7 @@ const VAZIO: Estado = {
   treinosNaSemana: 0,
   sequencia: 0,
   recordes: [],
+  feitosHoje: [],
 };
 
 export function useDadosAluno() {
@@ -182,7 +189,7 @@ export function useDadosAluno() {
         .maybeSingle(),
       supabase
         .from('sessoes')
-        .select('treino_id, modalidade, concluida_em')
+        .select('id, treino_id, modalidade, concluida_em')
         .eq('aluno_id', uid)
         .eq('status', 'concluida')
         .gte('concluida_em', desde.toISOString())
@@ -203,6 +210,7 @@ export function useDadosAluno() {
     }
 
     const sessoes = (rSessoes.data ?? []).map((s) => ({
+      id: s.id as string,
       treinoId: s.treino_id as string | null,
       modalidade: s.modalidade as Modalidade,
       data: new Date(s.concluida_em as string),
@@ -279,6 +287,9 @@ export function useDadosAluno() {
       treinosNaSemana: semana.reduce((t, d) => t + d.feitos.length, 0),
       sequencia: sequenciaDeSemanas(sessoes.map((s) => s.data)),
       recordes,
+      feitosHoje: sessoes
+        .filter((s) => mesmoDia(s.data, hoje))
+        .map((s) => ({ id: s.id, treinoId: s.treinoId, modalidade: s.modalidade })),
     });
   }, [sessao]);
 

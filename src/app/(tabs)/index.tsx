@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, V
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
+import { CardFeitoHoje } from '@/components/card-feito-hoje';
 import { ChipModalidade } from '@/components/chip-modalidade';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
@@ -26,6 +27,8 @@ export default function Hoje() {
   const dados = useDadosAluno();
   const primeiroNome = perfil?.nome?.split(' ')[0] ?? '';
   const treino = dados.treinoDeHoje;
+  // O treino do dia já foi feito hoje? Então a Hoje mostra o resumo em vez de "Começar"
+  const feitoDoTreino = treino ? dados.feitosHoje.find((f) => f.treinoId === treino.id) : undefined;
   const recorde = dados.recordes[0];
   const diasComTreino = dados.semana.filter((d) => d.feitos.length > 0).length;
   const [emAndamento, setEmAndamento] = useState<TreinoAtivo | null>(null);
@@ -74,6 +77,8 @@ export default function Hoje() {
             <Texto variante="legenda">{dados.erro}</Texto>
             <Botao titulo="Tentar de novo" tipo="secundario" onPress={dados.recarregar} />
           </View>
+        ) : treino && feitoDoTreino ? (
+          <CardFeitoHoje sessaoId={feitoDoTreino.id} letra={treino.letra} nome={treino.nome} />
         ) : treino ? (
           // A letra gigante é o elemento marcante, como o "1" dentro do ONE do logo
           <View style={estilos.treinoDia}>
