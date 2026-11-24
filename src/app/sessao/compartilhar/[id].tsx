@@ -1,4 +1,7 @@
+import { ImageFormat, Skia } from '@shopify/react-native-skia';
+import { cacheDirectory, EncodingType, writeAsStringAsync } from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import * as Sharing from 'expo-sharing';
@@ -28,7 +31,8 @@ import { semTempos } from '@/lib/timer';
 // Compartilhar o treino: vira imagem e abre o menu do celular (Stories, WhatsApp, salvar...).
 // - Card: fundo preto da Fit One, imagem 9:16.
 // - Com foto: sua foto no fundo e o selo do treino por cima. Arraste o selo com um dedo e
-//   aumente/diminua com dois (pinça) ou nos botões. Imagem 9:16.
+//   aumente/diminua com dois (pinça) ou nos botões. A foto NUNCA é cortada: a imagem fica no formato
+//   da própria foto (vertical ou horizontal) e sai na resolução original dela.
 // - Adesivo: só o selo, com fundo transparente, para colar no Instagram e ajustar lá.
 // O selo nunca corta: se não couber, ele encolhe sozinho. Nunca mostra peso corporal.
 
@@ -41,11 +45,10 @@ export default function Compartilhar() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [resumo, setResumo] = useState<ResumoSessao | null>(null);
   const [tipo, setTipo] = useState<Tipo>('card');
-  const [foto, setFoto] = useState<string | null>(null);
+  const [foto, setFoto] = useState<{ uri: string; w: number; h: number } | null>(null);
   const [fundoSelo, setFundoSelo] = useState(false);
   const [mostrarTempo, setMostrarTempo] = useState(true); // tirar o cronômetro: mostra só o treino feito
-  const [mostrarTreino, setMostrarTreino] = useState(true);
-  const [fotoInteira, setFotoInteira] = useState(true); // não corta ninguém da foto vertical // tirar estações/números: fica só FIT ONE + o nome do treino
+  const [mostrarTreino, setMostrarTreino] = useState(true); // tirar estações/números: fica só FIT ONE + o nome do treino
   const [palco, setPalco] = useState({ w: 0, h: 0 });
   const [selo, setSelo] = useState({ w: 0, h: 0 }); // tamanho natural do selo
   const [gerando, setGerando] = useState(false);
@@ -112,27 +115,76 @@ export default function Compartilhar() {
       Alert.alert('Sem permissão', 'Libere as fotos nos Ajustes do celular.');
       return;
     }
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85, allowsEditing: true, aspect: [9, 16] });
-    if (!r.canceled && r.assets[0]) {
-      setFoto(r.assets[0].uri);
+    // sem recorte e sem compressão: a foto entra inteira, do jeito que está na galeria
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 1, allowsEditing: false });
+    if (r.canceled || !r.assets[0]) return;
+    try {
+      setGerando(true);
+      // grava a rotação certa (foto de iPhone vem "deitada" com etiqueta) e limita a 4096 px no lado maior
+      const a = r.assets[0];
+      const maior = Math.max(a.width || 0, a.height || 0);
+      let ctx = ImageManipulator.manipulate(a.uri);
+      if (maior > 4096) ctx = a.width >= a.height ? ctx.resize({ width: 4096 }) : ctx.resize({ height: 4096 });
+      const img = await ctx.renderAsync();
+      const salva = await img.saveAsync({ compress: 1, format: SaveFormat.JPEG });
+      setFoto({ uri: salva.uri, w: salva.width, h: salva.height });
       setTipo('foto');
+    } catch (e: any) {
+      Alert.alert('Não deu para abrir a foto', String(e?.message ?? e));
+    } finally {
+      setGerando(false);
     }
+  }
+
+  // Com foto: junta a foto ORIGINAL (resolução cheia) com o selo desenhado no tamanho final.
+  // Nada de "print da tela": a qualidade é a da foto.
+  async function montarComFoto(f: { uri: string; w: number; h: number }) {
+    const k = f.w / largura; // pontos da tela -> pixels da foto
+    const s = atual.current.s * base;
+    const sw = Math.round(selo.w * s * k);
+    const sh = Math.round(selo.h * s * k);
+    const seloUri = await captureRef(alvoSelo as any, { format: 'png', quality: 1, result: 'tmpfile', width: sw, height: sh });
+
+    const [dadosFoto, dadosSelo] = await Promise.all([Skia.Data.fromURI(f.uri), Skia.Data.fromURI(seloUri)]);
+    const imgFoto = Skia.Image.MakeImageFromEncoded(dadosFoto);
+    const imgSelo = Skia.Image.MakeImageFromEncoded(dadosSelo);
+    const superficie = Skia.Surface.Make(f.w, f.h);
+    if (!imgFoto || !imgSelo || !superficie) throw new Error('Foto grande demais para este celular. Tente outra.');
+
+    const tela = superficie.getCanvas();
+    const pincel = Skia.Paint();
+    tela.drawImageRect(imgFoto, Skia.XYWHRect(0, 0, imgFoto.width(), imgFoto.height()), Skia.XYWHRect(0, 0, f.w, f.h), pincel);
+    // centro do selo = centro da imagem + o quanto a pessoa arrastou
+    const cx = (largura / 2 + atual.current.x) * k;
+    const cy = (altura / 2 + atual.current.y) * k;
+    tela.drawImageRect(imgSelo, Skia.XYWHRect(0, 0, imgSelo.width(), imgSelo.height()), Skia.XYWHRect(cx - sw / 2, cy - sh / 2, sw, sh), pincel);
+    superficie.flush();
+
+    const base64 = superficie.makeImageSnapshot().encodeToBase64(ImageFormat.JPEG, 95);
+    const destino = `${cacheDirectory}fitone-treino-${Date.now()}.jpg`;
+    await writeAsStringAsync(destino, base64, { encoding: EncodingType.Base64 });
+    return destino;
   }
 
   async function compartilhar() {
     if (tipo === 'foto' && !foto) return escolherFoto();
     setGerando(true);
     try {
+      if (tipo === 'foto' && foto) {
+        const uri = await montarComFoto(foto);
+        await Sharing.shareAsync(uri, { mimeType: 'image/jpeg', dialogTitle: 'Compartilhar treino', UTI: 'public.jpeg' });
+        return;
+      }
       const uri =
         tipo === 'adesivo'
           ? await captureRef(alvoSelo as any, {
               format: 'png',
               quality: 1,
               result: 'tmpfile',
-              width: 1080,
-              height: Math.round((1080 * selo.h) / Math.max(1, selo.w)),
+              width: 2160, // grande: dá para aumentar no Instagram sem borrar
+              height: Math.round((2160 * selo.h) / Math.max(1, selo.w)),
             })
-          : await captureRef(alvo as any, { format: 'png', quality: 1, result: 'tmpfile', width: 1080, height: 1920 });
+          : await captureRef(alvo as any, { format: 'png', quality: 1, result: 'tmpfile', width: 1440, height: 2560 });
       await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Compartilhar treino', UTI: 'public.png' });
     } catch (e: any) {
       Alert.alert('Não deu para gerar a imagem', String(e?.message ?? e));
@@ -143,15 +195,18 @@ export default function Compartilhar() {
 
   const aoMedirPalco = (ev: LayoutChangeEvent) => setPalco({ w: ev.nativeEvent.layout.width, h: ev.nativeEvent.layout.height });
 
-  // Card 9:16 do maior tamanho que cabe; "e" = escala (1 = card de 360 px de largura)
-  const largura = Math.max(0, Math.min(palco.w, (palco.h * 9) / 16));
-  const altura = (largura * 16) / 9;
-  const e = largura / 360;
+  // Card 9:16 (ou o formato da foto, sem cortar) do maior tamanho que cabe
+  const proporcao = tipo === 'foto' && foto && foto.h > 0 ? foto.w / foto.h : 9 / 16; // largura / altura
+  const largura = Math.max(0, Math.min(palco.w, palco.h * proporcao));
+  const altura = proporcao > 0 ? largura / proporcao : 0;
+  // "e" = escala do desenho do selo (1 = selo pensado para um card de 360 px de largura).
+  // Em foto deitada a largura é grande e a altura pequena: usa o lado que limita.
+  const e = Math.min(largura, altura * (9 / 16)) / 360;
   // encolhe o selo para sempre caber inteiro no card
   const base = selo.h > 0 ? Math.min(1, (altura * 0.9) / selo.h, (largura * 0.94) / selo.w) : 1;
 
   // reposiciona quando muda o jeito ou quando o selo é medido
-  const chave = `${tipo}-${Math.round(selo.h)}-${Math.round(altura)}`;
+  const chave = `${tipo}-${foto?.uri ?? ''}-${Math.round(selo.h)}-${Math.round(altura)}`;
   const ultimaChave = useRef('');
   useEffect(() => {
     if (!selo.h || !altura || ultimaChave.current === chave) return;
@@ -275,7 +330,6 @@ export default function Compartilhar() {
           [
             ['Mostrar o tempo', mostrarTempo, () => setMostrarTempo((m) => !m)],
             ['Mostrar o treino', mostrarTreino, () => setMostrarTreino((m) => !m)],
-            ...(comFoto ? ([['Foto inteira', fotoInteira, () => setFotoInteira((m) => !m)]] as const) : []),
           ] as const
         ).map(([texto, ligado, trocar]) => (
           <Pressable key={texto} onPress={trocar} style={estilos.opcaoTempo} hitSlop={6}>
@@ -300,18 +354,8 @@ export default function Compartilhar() {
               tipo === 'card' && { borderWidth: 1, borderColor: Cores.borda }, // só na tela, não sai na imagem
             ]}>
             <View ref={alvo} collapsable={false} style={{ width: largura, height: altura, backgroundColor: tipo === 'card' ? Cores.fundo : 'transparent' }}>
-              {comFoto ? (
-                fotoInteira ? (
-                  <>
-                    {/* foto vertical inteira: a mesma foto desfocada preenche as bordas (igual ao Instagram) */}
-                    <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={25} />
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
-                    <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="contain" />
-                  </>
-                ) : (
-                  <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                )
-              ) : null}
+              {/* a imagem tem o formato da foto, então "cover" aqui não corta nada */}
+              {comFoto ? <Image source={{ uri: foto!.uri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
 
               <Animated.View
                 {...(mexe ? arrastar.panHandlers : {})}
