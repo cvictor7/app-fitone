@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -10,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Campo } from '@/components/campo';
+import { EditorEstacoes } from '@/components/editor-estacoes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Raio, infoModalidade, type Modalidade } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
@@ -19,7 +21,9 @@ import {
   CONFIG_PADRAO,
   EXPLICACAO_MODO,
   NOMES_MODO,
-  PARTES_PROVA,
+  sequencia,
+  textoEstacao,
+  type Estacao,
   calcular,
   mmss,
   resumoTimer,
@@ -27,7 +31,8 @@ import {
   type ModoTimer,
 } from '@/lib/timer';
 
-// Timers de Cross e Hybrid: AMRAP, EMOM, For Time, Tabata e Prova híbrida (parciais).
+// Timers de Cross e Hybrid: AMRAP, EMOM, For Time, Tabata e Estações (montadas pelo aluno ou
+// pelo personal: por tempo, com parcial de cada uma, ou na janela de X segundos por estação).
 // Voz e vibração nas trocas de fase; no fim vira um treino salvo (com o resumo no "o que você fez").
 
 type Etapa = 'config' | 'contagem' | 'rodando' | 'fim';
@@ -52,6 +57,9 @@ function Contador({ rotulo, valor, aoMudar, passo = 1, min = 1, max = 999, sufix
   );
 }
 
+type TreinoSalvo = { nome: string; modo: ModoTimer; estacoes: Estacao[]; voltas: number; janelaS: number };
+const CHAVE_SALVOS = 'fitone:estacoes-salvas';
+
 function falar(texto: string) {
   Speech.stop();
   Speech.speak(texto, { language: 'pt-BR', rate: 1.05 });
@@ -64,9 +72,15 @@ export default function Timer() {
   const { gymId } = useSessao();
   const dados = useDadosAluno();
   const treinoDoPlano = treinoId ? dados.plano?.treinos.find((t) => t.id === treinoId) : undefined;
-  const modos: ModoTimer[] = modalidade === 'hybrid' ? ['amrap', 'emom', 'fortime', 'tabata', 'prova'] : ['amrap', 'emom', 'fortime', 'tabata'];
+  const modos: ModoTimer[] =
+    modalidade === 'hybrid' ? ['prova', 'janela', 'amrap', 'emom', 'fortime', 'tabata'] : ['amrap', 'emom', 'fortime', 'tabata', 'prova', 'janela'];
 
-  const [cfg, setCfg] = useState<ConfigTimer>(CONFIG_PADRAO);
+  const [cfg, setCfg] = useState<ConfigTimer>(modalidade === 'hybrid' ? { ...CONFIG_PADRAO, modo: 'prova' } : CONFIG_PADRAO);
+  const [feitosJanela, setFeitosJanela] = useState<Record<number, number>>({}); // Janela: tempo usado em cada estação
+  const [dupla, setDupla] = useState(false);
+  const [parceiro, setParceiro] = useState('');
+  const [salvos, setSalvos] = useState<TreinoSalvo[]>([]);
+  const [nomeSalvar, setNomeSalvar] = useState('');
   const [etapa, setEtapa] = useState<Etapa>('config');
   const [nota, setNota] = useState('');
   const [agora, setAgora] = useState(Date.now());
@@ -84,13 +98,39 @@ export default function Timer() {
   const ultimoBip = useRef(-1);
   const preencheu = useRef(false);
 
-  // treino prescrito: "o que fazer" já vem preenchido
+  // treino prescrito: "o que fazer" e as estações do personal já vêm preenchidos
   useEffect(() => {
     if (preencheu.current || !treinoDoPlano) return;
     preencheu.current = true;
     if (treinoDoPlano.descricao) setNota(treinoDoPlano.descricao);
     if (treinoDoPlano.duracaoMin) setCfg((c) => ({ ...c, minutos: Math.min(60, treinoDoPlano.duracaoMin!) }));
+    const t = treinoDoPlano.timer;
+    if (t?.estacoes?.length)
+      setCfg((c) => ({ ...c, ...t, modo: t.modo ?? 'prova', voltas: Math.max(1, t.voltas || 1), janelaS: Math.max(15, t.janelaS || 60) }));
   }, [treinoDoPlano]);
+
+  // treinos de estações que o aluno salvou no celular
+  useEffect(() => {
+    AsyncStorage.getItem(CHAVE_SALVOS).then((t) => t && setSalvos(JSON.parse(t))).catch(() => {});
+  }, []);
+
+  async function salvarMontagem() {
+    const nome = nomeSalvar.trim() || `Treino ${salvos.length + 1}`;
+    const novo: TreinoSalvo = { nome, modo: cfg.modo, estacoes: cfg.estacoes, voltas: cfg.voltas, janelaS: cfg.janelaS };
+    const lista = [novo, ...salvos.filter((x) => x.nome !== nome)].slice(0, 20);
+    setSalvos(lista);
+    setNomeSalvar('');
+    await AsyncStorage.setItem(CHAVE_SALVOS, JSON.stringify(lista));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }
+
+  async function apagarMontagem(nome: string) {
+    const lista = salvos.filter((x) => x.nome !== nome);
+    setSalvos(lista);
+    await AsyncStorage.setItem(CHAVE_SALVOS, JSON.stringify(lista));
+  }
+
+  const seq = sequencia(cfg);
 
   useEffect(() => {
     if (etapa !== 'contagem' && etapa !== 'rodando') return;
@@ -133,6 +173,10 @@ export default function Timer() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       if (cfg.modo === 'tabata') falar(estado.fase === 'trabalho' ? 'Trabalho' : 'Descanso');
       else if (cfg.modo === 'emom') falar(estado.rotulo.split(' DE ')[0].toLowerCase());
+      else if (cfg.modo === 'janela') {
+        const idx = Math.floor(decorrido / cfg.janelaS);
+        if (seq[idx]) falar(textoEstacao(seq[idx]));
+      }
       else if (cfg.modo === 'amrap') {
         const falta = Math.round(estado.principalS / 60);
         if (falta > 0 && (falta <= 3 || falta % 5 === 0)) falar(falta === 1 ? 'Falta um minuto' : `Faltam ${falta} minutos`);
@@ -154,6 +198,7 @@ export default function Timer() {
     setRodadas(0);
     setReps(0);
     setParciais([]);
+    setFeitosJanela({});
     setPausadoEm(null);
     setContagemAte(Date.now() + 3000);
     setAgora(Date.now());
@@ -192,12 +237,22 @@ export default function Timer() {
     const duracao = decorrido - inicioParteAtual;
     const novas = [...parciais, duracao];
     setParciais(novas);
-    if (novas.length >= PARTES_PROVA.length) {
+    if (novas.length >= seq.length) {
       terminar();
     } else {
-      falar(PARTES_PROVA[novas.length]);
+      falar(textoEstacao(seq[novas.length]));
     }
   }
+
+  // Janela: "FEITO" marca quanto tempo levou nesta estação; o resto do tempo é descanso
+  function feitoJanela() {
+    const idx = Math.floor(decorrido / cfg.janelaS);
+    if (feitosJanela[idx] !== undefined) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setFeitosJanela((f) => ({ ...f, [idx]: decorrido % cfg.janelaS }));
+    falar('Descansa');
+  }
+  const parciaisFinais = cfg.modo === 'janela' ? seq.map((_, i) => feitosJanela[i] ?? 0) : parciais;
 
   // id criado no celular uma vez só: se o sinal cair e você tocar em Salvar de novo, não duplica
   const idSessao = useRef(Crypto.randomUUID()).current;
@@ -205,8 +260,9 @@ export default function Timer() {
   async function salvar() {
     setSalvando(true);
     const fim = new Date();
-    const resumo = resumoTimer(cfg, fimDecorrido, rodadas, reps, parciais);
-    const observacao = [resumo, nota.trim()].filter(Boolean).join('\n');
+    const resumo = resumoTimer(cfg, fimDecorrido, rodadas, reps, parciaisFinais);
+    const emDupla = dupla ? `Em dupla${parceiro.trim() ? ` com ${parceiro.trim()}` : ''}` : '';
+    const observacao = [resumo, emDupla, nota.trim()].filter(Boolean).join('\n');
     const { data, error } = await supabase
       .from('sessoes')
       .insert({
@@ -306,10 +362,53 @@ export default function Timer() {
                   <Contador rotulo="DESCANSO" valor={cfg.descansoS} aoMudar={(v) => mudar({ descansoS: v })} passo={5} min={0} max={300} sufixo=" s" />
                 </>
               ) : null}
-              {cfg.modo === 'prova' ? (
-                <Texto variante="legenda">
-                  {PARTES_PROVA.length} partes: {PARTES_PROVA.filter((p) => !p.startsWith('Corrida')).join(', ')}, cada uma depois de 1 km de corrida. Toque em "Próxima" ao terminar cada parte.
-                </Texto>
+              {cfg.modo === 'prova' || cfg.modo === 'janela' ? (
+                <>
+                  {salvos.length > 0 ? (
+                    <View style={{ gap: 6 }}>
+                      <Texto variante="rotulo">MEUS TREINOS SALVOS</Texto>
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: Espaco.sm }}>
+                        {salvos.map((t) => (
+                          <Pressable
+                            key={t.nome}
+                            onPress={() => mudar({ modo: t.modo, estacoes: t.estacoes, voltas: t.voltas, janelaS: t.janelaS })}
+                            onLongPress={() =>
+                              Alert.alert(`Apagar "${t.nome}"?`, undefined, [
+                                { text: 'Cancelar', style: 'cancel' },
+                                { text: 'Apagar', style: 'destructive', onPress: () => apagarMontagem(t.nome) },
+                              ])
+                            }
+                            style={[estilos.modo, { height: 40 }]}>
+                            <Texto variante="corpo">{t.nome}</Texto>
+                          </Pressable>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  ) : null}
+                  <EditorEstacoes estacoes={cfg.estacoes} aoMudar={(e) => mudar({ estacoes: e })} cor={info.cor} />
+                  <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
+                    <Contador rotulo="VOLTAS" valor={cfg.voltas} aoMudar={(v) => mudar({ voltas: v })} max={20} />
+                    {cfg.modo === 'janela' ? (
+                      <Contador rotulo="TEMPO POR ESTAÇÃO" valor={cfg.janelaS} aoMudar={(v) => mudar({ janelaS: v })} passo={15} min={15} max={600} sufixo=" s" />
+                    ) : null}
+                  </View>
+                  {cfg.estacoes.length === 0 ? (
+                    <Texto variante="legenda">Sem montar nada, vale o modelo da prova (8 corridas de 1 km + 8 estações).</Texto>
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: Espaco.sm, alignItems: 'center' }}>
+                      <Campo value={nomeSalvar} onChangeText={setNomeSalvar} placeholder="Nome (ex.: Hybrid de quinta)" style={{ flex: 1 }} maxLength={30} />
+                      <Botao titulo="Salvar" tipo="secundario" cor={info.cor} onPress={salvarMontagem} />
+                    </View>
+                  )}
+                  <View style={estilos.dupla}>
+                    <Pressable onPress={() => setDupla((d) => !d)} style={[estilos.modo, { height: 40 }, dupla && { backgroundColor: info.cor, borderColor: info.cor }]}>
+                      <Texto variante="corpo" cor={dupla ? Cores.preto : Cores.texto}>
+                        {dupla ? '✓ Em dupla' : 'Em dupla?'}
+                      </Texto>
+                    </Pressable>
+                    {dupla ? <Campo value={parceiro} onChangeText={setParceiro} placeholder="Com quem?" style={{ flex: 1 }} maxLength={30} /> : null}
+                  </View>
+                </>
               ) : null}
             </View>
 
@@ -366,7 +465,7 @@ export default function Timer() {
                 {mmss(fimDecorrido)}
               </Texto>
               <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
-                {resumoTimer(cfg, fimDecorrido, rodadas, reps, parciais).split('\n')[0]}
+                {resumoTimer(cfg, fimDecorrido, rodadas, reps, parciaisFinais).split('\n')[0]}
               </Texto>
             </View>
 
@@ -377,15 +476,15 @@ export default function Timer() {
               </View>
             ) : null}
 
-            {cfg.modo === 'prova' && parciais.length > 0 ? (
+            {(cfg.modo === 'prova' || cfg.modo === 'janela') && parciaisFinais.length > 0 ? (
               <View style={estilos.lista}>
-                {parciais.map((p, i) => (
+                {parciaisFinais.map((p, i) => (
                   <View key={i} style={[estilos.linhaParcial, i > 0 && estilos.separador]}>
                     <Texto variante="corpo" style={{ flex: 1 }}>
-                      {i + 1}. {PARTES_PROVA[i]}
+                      {i + 1}. {seq[i] ? textoEstacao(seq[i]) : ''}
                     </Texto>
-                    <Texto variante="numero" style={{ fontSize: 20, lineHeight: 22 }}>
-                      {mmss(p)}
+                    <Texto variante="numero" style={{ fontSize: 20, lineHeight: 22 }} cor={p > 0 ? Cores.texto : Cores.textoApagado}>
+                      {p > 0 ? mmss(p) : '–'}
                     </Texto>
                   </View>
                 ))}
@@ -427,6 +526,9 @@ export default function Timer() {
   const corFase = descanso ? Cores.textoSecundario : info.cor;
   const pausado = pausadoEm !== null;
   const tempoParte = decorrido - inicioParteAtual;
+  const idxJanela = Math.floor(decorrido / cfg.janelaS);
+  const estacaoAgora: Estacao | undefined = cfg.modo === 'janela' ? seq[Math.min(idxJanela, seq.length - 1)] : cfg.modo === 'prova' ? seq[Math.min(parciais.length, seq.length - 1)] : undefined;
+  const janelaFeita = cfg.modo === 'janela' ? feitosJanela[idxJanela] : undefined;
 
   return (
     <SafeAreaView style={[estilos.tela, descanso && { backgroundColor: '#111311' }]} edges={['top', 'bottom']}>
@@ -458,9 +560,25 @@ export default function Timer() {
           style={[estilos.tempo, mmss(estado.principalS).length > 5 && { fontSize: 100, lineHeight: 104 }]}>
           {mmss(estado.principalS)}
         </Texto>
+        {(cfg.modo === 'prova' || cfg.modo === 'janela') && estacaoAgora ? (
+          <View style={{ alignItems: 'center' }}>
+            <Texto variante="titulo" cor={Cores.texto} style={{ textAlign: 'center' }} numberOfLines={2}>
+              {estacaoAgora.nome}
+            </Texto>
+            {estacaoAgora.alvo ? (
+              <Texto variante="display" cor={corFase} style={{ fontSize: 44, lineHeight: 46 }}>
+                {estacaoAgora.alvo}
+              </Texto>
+            ) : null}
+          </View>
+        ) : null}
         {cfg.modo === 'prova' ? (
           <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
-            Esta parte: {mmss(tempoParte)}
+            Esta estação: {mmss(tempoParte)}
+          </Texto>
+        ) : cfg.modo === 'janela' ? (
+          <Texto variante="subtitulo" style={{ textAlign: 'center' }} cor={janelaFeita !== undefined ? Cores.verde : Cores.texto}>
+            {janelaFeita !== undefined ? `Feito em ${mmss(janelaFeita)} · descansa` : 'Tempo desta estação'}
           </Texto>
         ) : cfg.modo === 'amrap' ? (
           <Texto variante="legenda">decorrido {mmss(decorrido)}</Texto>
@@ -499,16 +617,34 @@ export default function Timer() {
         <View style={{ paddingHorizontal: Espaco.lg, gap: Espaco.sm }}>
           {parciais.length > 0 ? (
             <Texto variante="legenda" numberOfLines={1}>
-              Anterior: {PARTES_PROVA[parciais.length - 1]} em {mmss(parciais[parciais.length - 1])}
+              Anterior: {textoEstacao(seq[parciais.length - 1])} em {mmss(parciais[parciais.length - 1])}
             </Texto>
           ) : null}
           <Pressable onPress={proximaParte} style={[estilos.botaoProxima, { backgroundColor: info.cor }]}>
             <Texto variante="display" cor={Cores.preto} style={{ fontSize: 32, lineHeight: 34 }}>
-              {parciais.length + 1 >= PARTES_PROVA.length ? 'TERMINEI' : 'PRÓXIMA'}
+              {parciais.length + 1 >= seq.length ? 'TERMINEI' : 'PRÓXIMA'}
             </Texto>
-            {parciais.length + 1 < PARTES_PROVA.length ? (
+            {parciais.length + 1 < seq.length ? (
               <Texto variante="legenda" cor={Cores.preto}>
-                depois: {PARTES_PROVA[parciais.length + 1]}
+                depois: {textoEstacao(seq[parciais.length + 1])}
+              </Texto>
+            ) : null}
+          </Pressable>
+        </View>
+      ) : null}
+
+      {cfg.modo === 'janela' ? (
+        <View style={{ paddingHorizontal: Espaco.lg, gap: Espaco.sm }}>
+          <Pressable
+            onPress={feitoJanela}
+            disabled={janelaFeita !== undefined}
+            style={[estilos.botaoProxima, { backgroundColor: janelaFeita !== undefined ? Cores.superficieAlta : info.cor }]}>
+            <Texto variante="display" cor={janelaFeita !== undefined ? Cores.textoSecundario : Cores.preto} style={{ fontSize: 32, lineHeight: 34 }}>
+              {janelaFeita !== undefined ? 'DESCANSANDO' : 'FEITO'}
+            </Texto>
+            {seq[idxJanela + 1] ? (
+              <Texto variante="legenda" cor={janelaFeita !== undefined ? Cores.textoSecundario : Cores.preto}>
+                depois: {textoEstacao(seq[idxJanela + 1])}
               </Texto>
             ) : null}
           </Pressable>
@@ -545,5 +681,6 @@ const estilos = StyleSheet.create({
   rodadasRodando: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md, paddingHorizontal: Espaco.lg },
   botaoRodada: { flex: 1.4, height: 120, borderRadius: Raio.lg, alignItems: 'center', justifyContent: 'center' },
   botaoProxima: { height: 110, borderRadius: Raio.lg, alignItems: 'center', justifyContent: 'center' },
+  dupla: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm },
   rodapeRodando: { flexDirection: 'row', gap: Espaco.sm, padding: Espaco.lg - 4 },
 });

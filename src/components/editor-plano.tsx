@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Campo } from '@/components/campo';
+import { EditorEstacoes } from '@/components/editor-estacoes';
 import { EscolherExercicio } from '@/components/escolher-exercicio';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, ListaModalidades, Modalidades, Raio } from '@/constants/theme';
@@ -400,6 +401,69 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                   </View>
                 ) : null}
               </View>
+
+              {treino.modalidade === 'hybrid' || treino.modalidade === 'cross' ? (
+                <View style={estilos.blocoEstacoes}>
+                  <Texto variante="rotulo">TREINO DE ESTAÇÕES (OPCIONAL)</Texto>
+                  <Texto variante="legenda">
+                    Monte as estações: o {ehAluno ? 'timer' : 'aluno'} já abre com elas. Ex.: Corrida 200 m → Wall ball 30 → Corrida 200 m → Trenó 20 m.
+                  </Texto>
+                  <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
+                    {(['prova', 'janela'] as const).map((m) => {
+                      const on = (treino.timer?.modo ?? 'prova') === m;
+                      return (
+                        <Pressable
+                          key={m}
+                          onPress={() =>
+                            mudar((p) => {
+                              const atual = p.treinos[aba].timer ?? { modo: 'prova', estacoes: [], voltas: 1, janelaS: 60 };
+                              p.treinos[aba].timer = { ...atual, modo: m };
+                            })
+                          }
+                          style={[estilos.dia, { paddingHorizontal: 14, width: 'auto' }, on && estilos.diaOn]}>
+                          <Texto variante="legenda" cor={on ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: Fontes.textoSemi }}>
+                            {m === 'prova' ? 'Por tempo' : 'Na janela'}
+                          </Texto>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                  <EditorEstacoes
+                    estacoes={treino.timer?.estacoes ?? []}
+                    cor={Modalidades[treino.modalidade].cor}
+                    aoMudar={(estacoes) =>
+                      mudar((p) => {
+                        const atual = p.treinos[aba].timer ?? { modo: 'prova', estacoes: [], voltas: 1, janelaS: 60 };
+                        p.treinos[aba].timer = { ...atual, estacoes };
+                      })
+                    }
+                  />
+                  {treino.timer?.estacoes.length ? (
+                    <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
+                      <View style={{ flex: 1, gap: 4 }}>
+                        <Texto variante="rotulo">VOLTAS</Texto>
+                        <Campo
+                          value={treino.timer.voltas ? String(treino.timer.voltas) : ''}
+                          onChangeText={(t) => mudar((p) => void (p.treinos[aba].timer!.voltas = Math.min(20, Number(t.replace(/\D/g, '')) || 0)))}
+                          keyboardType="number-pad"
+                          style={{ minHeight: 50, fontSize: 16 }}
+                        />
+                      </View>
+                      {treino.timer.modo === 'janela' ? (
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <Texto variante="rotulo">SEGUNDOS POR ESTAÇÃO</Texto>
+                          <Campo
+                            value={treino.timer.janelaS ? String(treino.timer.janelaS) : ''}
+                            onChangeText={(t) => mudar((p) => void (p.treinos[aba].timer!.janelaS = Math.min(600, Number(t.replace(/\D/g, '')) || 0)))}
+                            keyboardType="number-pad"
+                            style={{ minHeight: 50, fontSize: 16 }}
+                          />
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
             </View>
           ) : null}
 
@@ -514,6 +578,7 @@ export function EditorPlano({ id, aluno, modo }: Props) {
 }
 
 const estilos = StyleSheet.create({
+  blocoEstacoes: { gap: Espaco.sm, backgroundColor: Cores.superficie, borderRadius: Raio.lg, padding: Espaco.md, marginTop: Espaco.sm },
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.xl, gap: Espaco.md },
   abas: { flexDirection: 'row', gap: 6, backgroundColor: Cores.superficie, borderRadius: 12, padding: 4 },

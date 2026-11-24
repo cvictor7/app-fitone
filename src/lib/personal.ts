@@ -1,3 +1,4 @@
+import type { TimerPrescrito } from '@/lib/timer';
 import { File } from 'expo-file-system';
 
 import type { Modalidade } from '@/constants/theme';
@@ -74,6 +75,7 @@ export type TreinoNoPlano = {
   descricao: string; // outras modalidades (ex.: o WOD do Cross)
   duracaoMin: string;
   distanciaKm: string; // corrida e bike
+  timer: TimerPrescrito | null; // Hybrid/Cross: estações montadas (opcional)
 };
 
 export const treinoVazio = (letra: string): TreinoNoPlano => ({
@@ -90,6 +92,7 @@ export const treinoVazio = (letra: string): TreinoNoPlano => ({
   descricao: '',
   duracaoMin: '',
   distanciaKm: '',
+  timer: null,
 });
 
 export type PlanoEditavel = {
@@ -147,7 +150,7 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
       .from('planos')
       .select(
         `id, aluno_id, nome, fim, observacao, ativo,
-         treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio,
+         treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio, timer,
            treino_exercicios(ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
              exercicio:exercicios(id, nome, grupo)))`,
       )
@@ -179,6 +182,7 @@ export async function carregarPlano(id: string, gymId: string): Promise<PlanoEdi
         descricao: t.descricao ?? '',
         duracaoMin: t.duracao_min ? String(t.duracao_min) : '',
         distanciaKm: t.distancia_km ? String(Number(t.distancia_km)).replace('.', ',') : '',
+        timer: t.timer?.estacoes?.length ? (t.timer as TimerPrescrito) : null,
         diasSemana: t.dias_semana ?? [],
         exercicios: (t.treino_exercicios ?? [])
           .sort((a: any, b: any) => a.ordem - b.ordem)
@@ -205,7 +209,7 @@ export function validarPlano(p: PlanoEditavel): string | null {
   if (p.treinos.length === 0) return 'O plano precisa de pelo menos um treino.';
   for (const t of p.treinos) {
     if (!t.nome.trim()) return `Dê um nome para o treino ${t.letra}.`;
-    if (t.modalidade !== 'musculacao' && !t.descricao.trim() && !num(t.duracaoMin))
+    if (t.modalidade !== 'musculacao' && !t.descricao.trim() && !num(t.duracaoMin) && !t.timer?.estacoes.length)
       return `${t.nome}: escreva o que fazer ou a duração.`;
     if (t.modalidade !== 'musculacao') continue;
     for (const e of t.exercicios) {
@@ -277,6 +281,15 @@ export async function salvarPlano(p: PlanoEditavel, gymId: string, personalId: s
       descricao: t.modalidade === 'musculacao' ? null : t.descricao.trim() || null,
       duracao_min: t.modalidade === 'musculacao' ? null : num(t.duracaoMin),
       distancia_km: t.modalidade === 'corrida' || t.modalidade === 'caminhada' || t.modalidade === 'bike' ? num(t.distanciaKm) : null,
+      timer:
+        (t.modalidade === 'hybrid' || t.modalidade === 'cross') && t.timer?.estacoes.length
+          ? {
+              ...t.timer,
+              estacoes: t.timer.estacoes.filter((e) => e.nome.trim()),
+              voltas: Math.max(1, t.timer.voltas || 1),
+              janelaS: Math.max(15, t.timer.janelaS || 60),
+            }
+          : null,
     };
     let treinoId = t.id;
     if (treinoId) {

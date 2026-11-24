@@ -1,7 +1,10 @@
 // Contas dos timers de Cross e Hybrid. Tudo é calculado a partir do tempo decorrido
 // (relógio do celular), então continua certo mesmo se o app ficar em segundo plano.
 
-export type ModoTimer = 'amrap' | 'emom' | 'fortime' | 'tabata' | 'prova';
+export type ModoTimer = 'amrap' | 'emom' | 'fortime' | 'tabata' | 'prova' | 'janela';
+
+// Uma estação do treino montado (ex.: "Wall ball" · "30 reps", "Corrida" · "200 m")
+export type Estacao = { nome: string; alvo: string };
 
 export type ConfigTimer = {
   modo: ModoTimer;
@@ -10,6 +13,9 @@ export type ConfigTimer = {
   rodadas: number; // EMOM e Tabata
   trabalhoS: number; // Tabata
   descansoS: number; // Tabata
+  estacoes: Estacao[]; // Estações (por tempo) e Janela
+  voltas: number; // quantas vezes repete a lista de estações
+  janelaS: number; // Janela: tempo de cada estação (o que sobra é descanso)
 };
 
 export const NOMES_MODO: Record<ModoTimer, string> = {
@@ -17,7 +23,8 @@ export const NOMES_MODO: Record<ModoTimer, string> = {
   emom: 'EMOM',
   fortime: 'For Time',
   tabata: 'Tabata',
-  prova: 'Prova híbrida',
+  prova: 'Estações',
+  janela: 'Estações na janela',
 };
 
 export const EXPLICACAO_MODO: Record<ModoTimer, string> = {
@@ -25,7 +32,8 @@ export const EXPLICACAO_MODO: Record<ModoTimer, string> = {
   emom: 'Uma tarefa no começo de cada minuto; o que sobra é descanso.',
   fortime: 'Terminar o mais rápido possível (com limite de tempo, se quiser).',
   tabata: 'Trabalho e descanso alternados (20 s / 10 s × 8).',
-  prova: 'Corrida + estação, várias vezes, marcando o tempo de cada parte.',
+  prova: 'Monte as estações (com ou sem corrida) e faça no menor tempo. Toque em Próxima a cada estação.',
+  janela: 'Cada estação tem um tempo fixo (ex.: 1 min). Terminou antes? Descansa o que sobrar. Acabou o tempo, vai para a próxima.',
 };
 
 export const CONFIG_PADRAO: ConfigTimer = {
@@ -35,27 +43,65 @@ export const CONFIG_PADRAO: ConfigTimer = {
   rodadas: 10,
   trabalhoS: 20,
   descansoS: 10,
+  estacoes: [],
+  voltas: 1,
+  janelaS: 60,
 };
 
-// Partes da prova híbrida (nomes genéricos dos exercícios). 8 corridas + 8 estações.
-export const PARTES_PROVA = [
-  'Corrida 1 km',
-  'Ski',
-  'Corrida 1 km',
-  'Empurrar trenó',
-  'Corrida 1 km',
-  'Puxar trenó',
-  'Corrida 1 km',
-  'Burpee com salto',
-  'Corrida 1 km',
-  'Remo',
-  'Corrida 1 km',
-  'Carregar peso',
-  'Corrida 1 km',
-  'Avanço com saco',
-  'Corrida 1 km',
-  'Wall ball',
+// Modelo da prova híbrida oficial (nomes genéricos). O aluno/personal pode mudar tudo.
+export const PROVA_OFICIAL: Estacao[] = [
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Ski', alvo: '1000 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Empurrar trenó', alvo: '50 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Puxar trenó', alvo: '50 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Burpee com salto', alvo: '80 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Remo', alvo: '1000 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Carregar peso', alvo: '200 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Avanço com saco', alvo: '100 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Wall ball', alvo: '100 reps' },
 ];
+
+// Atalhos para montar rápido
+export const ESTACOES_RAPIDAS: Estacao[] = [
+  { nome: 'Corrida', alvo: '200 m' },
+  { nome: 'Corrida', alvo: '400 m' },
+  { nome: 'Corrida', alvo: '1 km' },
+  { nome: 'Wall ball', alvo: '20 reps' },
+  { nome: 'Empurrar trenó', alvo: '20 m' },
+  { nome: 'Puxar trenó', alvo: '20 m' },
+  { nome: 'Burpee', alvo: '15 reps' },
+  { nome: 'Burpee com salto', alvo: '20 m' },
+  { nome: 'Remo', alvo: '500 m' },
+  { nome: 'Ski', alvo: '500 m' },
+  { nome: 'Carregar peso', alvo: '100 m' },
+  { nome: 'Avanço com saco', alvo: '50 m' },
+  { nome: 'Flexão', alvo: '20 reps' },
+  { nome: 'KB swing', alvo: '20 reps' },
+  { nome: 'Box jump', alvo: '15 reps' },
+  { nome: 'Abdominal', alvo: '20 reps' },
+  { nome: 'Bike', alvo: '1 km' },
+];
+
+export const ehCorrida = (e: Estacao) => /^corrida/i.test(e.nome.trim());
+
+/** Lista completa na ordem (repete as estações pelo número de voltas). */
+export function sequencia(c: ConfigTimer): (Estacao & { volta: number })[] {
+  const base = c.estacoes.length ? c.estacoes : PROVA_OFICIAL;
+  const n = Math.max(1, c.voltas || 1);
+  return Array.from({ length: n }, (_, v) => base.map((e) => ({ ...e, volta: v + 1 }))).flat();
+}
+
+// Montagem de estações guardada no treino do plano (personal prescreve)
+export type TimerPrescrito = { modo: 'prova' | 'janela'; estacoes: Estacao[]; voltas: number; janelaS: number };
+
+export const textoEstacao = (e: Estacao) => `${e.nome}${e.alvo ? ` ${e.alvo}` : ''}`;
 
 export type EstadoTimer = {
   principalS: number; // número grande na tela (contagem regressiva ou progressiva)
@@ -118,14 +164,28 @@ export function calcular(c: ConfigTimer, decorridoS: number, parteAtual = 0): Es
       };
     }
     case 'prova': {
-      const parte = PARTES_PROVA[Math.min(parteAtual, PARTES_PROVA.length - 1)];
+      const seq = sequencia(c);
+      const parte = seq[Math.min(parteAtual, seq.length - 1)];
       return {
         principalS: t,
-        fase: parte.startsWith('Corrida') ? 'corrida' : 'trabalho',
-        rotulo: `PARTE ${Math.min(parteAtual + 1, PARTES_PROVA.length)} DE ${PARTES_PROVA.length} · ${parte.toUpperCase()}`,
-        progresso: Math.min(1, parteAtual / PARTES_PROVA.length),
-        acabou: parteAtual >= PARTES_PROVA.length,
+        fase: ehCorrida(parte) ? 'corrida' : 'trabalho',
+        rotulo: `ESTAÇÃO ${Math.min(parteAtual + 1, seq.length)} DE ${seq.length}${c.voltas > 1 ? ` · VOLTA ${parte.volta}` : ''}`,
+        progresso: Math.min(1, parteAtual / seq.length),
+        acabou: parteAtual >= seq.length,
         chaveAviso: `prova-${parteAtual}`,
+      };
+    }
+    case 'janela': {
+      const seq = sequencia(c);
+      const idx = Math.floor(t / c.janelaS);
+      const parte = seq[Math.min(idx, seq.length - 1)];
+      return {
+        principalS: c.janelaS - (t % c.janelaS),
+        fase: ehCorrida(parte) ? 'corrida' : 'trabalho',
+        rotulo: `ESTAÇÃO ${Math.min(idx + 1, seq.length)} DE ${seq.length}${c.voltas > 1 ? ` · VOLTA ${parte.volta}` : ''}`,
+        progresso: Math.min(1, t / (c.janelaS * seq.length)),
+        acabou: idx >= seq.length,
+        chaveAviso: `janela-${idx}`,
       };
     }
   }
@@ -151,8 +211,14 @@ export function resumoTimer(c: ConfigTimer, decorridoS: number, rodadas: number,
     case 'tabata':
       return `Tabata ${c.rodadas} × ${c.trabalhoS} s / ${c.descansoS} s`;
     case 'prova': {
-      const linhas = parciais.map((p, i) => `${PARTES_PROVA[i]} ${mmss(p)}`);
-      return `Prova híbrida · ${mmss(decorridoS)}\n${linhas.join(' · ')}`;
+      const seq = sequencia(c);
+      const linhas = parciais.map((p, i) => `${textoEstacao(seq[i])} ${mmss(p)}`);
+      return `Estações · ${mmss(decorridoS)}${c.voltas > 1 ? ` (${c.voltas} voltas)` : ''}\n${linhas.join(' · ')}`;
+    }
+    case 'janela': {
+      const seq = sequencia(c);
+      const linhas = parciais.map((p, i) => (seq[i] ? `${textoEstacao(seq[i])} ${p > 0 ? mmss(p) : '–'}` : '')).filter(Boolean);
+      return `Estações na janela de ${c.janelaS} s · ${seq.length} estações\n${linhas.join(' · ')}`;
     }
   }
 }

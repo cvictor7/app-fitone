@@ -1,3 +1,4 @@
+import type { TimerPrescrito } from '@/lib/timer';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
@@ -35,6 +36,7 @@ export type Treino = {
   descricao: string | null; // treinos que não são musculação
   duracaoMin: number | null;
   distanciaKm: number | null;
+  timer: TimerPrescrito | null; // estações montadas pelo personal (Hybrid/Cross)
   ordem: number;
   diasSemana: number[];
   exercicios: ExercicioPrescrito[];
@@ -214,7 +216,7 @@ export function useDadosAluno() {
         .select(
           `id, nome, observacao, personal_id, inicio, fim, criado_em,
            personal:profiles!planos_personal_id_fkey(nome),
-           treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio,
+           treinos(id, letra, nome, ordem, dias_semana, modalidade, descricao, duracao_min, distancia_km, rotulo, observacao, cardio, timer,
              treino_exercicios(id, ordem, series, reps_min, reps_max, carga_sugerida_kg, descanso_s, observacao,
                exercicio:exercicios(id, nome, grupo, midia_url, midias:exercicio_midias(video_url, instrucoes))))`,
         )
@@ -265,6 +267,7 @@ export function useDadosAluno() {
           descricao: t.descricao ?? null,
           duracaoMin: t.duracao_min ?? null,
           distanciaKm: t.distancia_km === null || t.distancia_km === undefined ? null : Number(t.distancia_km),
+          timer: t.timer?.estacoes?.length ? (t.timer as TimerPrescrito) : null,
           ordem: t.ordem,
           diasSemana: t.dias_semana ?? [],
           ultimaVez: sessoes.find((s) => s.treinoId === t.id)?.data ?? null,
