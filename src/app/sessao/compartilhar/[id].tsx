@@ -43,7 +43,8 @@ export default function Compartilhar() {
   const [tipo, setTipo] = useState<Tipo>('card');
   const [foto, setFoto] = useState<string | null>(null);
   const [fundoSelo, setFundoSelo] = useState(false);
-  const [mostrarTempo, setMostrarTempo] = useState(true); // tirar o cronômetro: mostra só o treino feito // com foto: sem fundo (padrão) ou fundo escuro
+  const [mostrarTempo, setMostrarTempo] = useState(true); // tirar o cronômetro: mostra só o treino feito
+  const [mostrarTreino, setMostrarTreino] = useState(true); // tirar estações/números: fica só FIT ONE + o nome do treino
   const [palco, setPalco] = useState({ w: 0, h: 0 });
   const [selo, setSelo] = useState({ w: 0, h: 0 }); // tamanho natural do selo
   const [gerando, setGerando] = useState(false);
@@ -211,6 +212,7 @@ export default function Compartilhar() {
         </Texto>
       ) : null}
 
+      {mostrarTreino && numeros.length > 0 ? (
       <View style={{ flexDirection: 'row', gap: 22 * e, marginTop: 8 * e }}>
         {numeros.map(([n, r, cor]) => (
           <View key={r} style={{ alignItems: 'center' }}>
@@ -223,14 +225,15 @@ export default function Compartilhar() {
           </View>
         ))}
       </View>
+      ) : null}
 
-      {musculacao && resumo.melhorSerie ? (
+      {mostrarTreino && musculacao && resumo.melhorSerie ? (
         <Texto variante="legenda" cor={cinzaSelo} numberOfLines={1} style={[{ fontSize: 13 * e, lineHeight: 18 * e, marginTop: 2 * e }, sombra]}>
           Melhor série: {resumo.melhorSerie.exercicio.toLowerCase()} · {resumo.melhorSerie.kg.toLocaleString('pt-BR')} kg ×{' '}
           {resumo.melhorSerie.reps}
         </Texto>
       ) : null}
-      {!musculacao && resumo.observacao ? (
+      {mostrarTreino && !musculacao && resumo.observacao ? (
         <Texto variante="corpo" cor={cinzaSelo} numberOfLines={5} style={[{ fontSize: 14 * e, lineHeight: 20 * e, textAlign: 'center' }, sombra]}>
           {mostrarTempo ? resumo.observacao : semTempos(resumo.observacao)}
         </Texto>
@@ -266,16 +269,25 @@ export default function Compartilhar() {
         ))}
       </View>
 
-      <Pressable onPress={() => setMostrarTempo((m) => !m)} style={estilos.opcaoTempo} hitSlop={6}>
-        <View style={[estilos.caixinha, mostrarTempo && { backgroundColor: Cores.verde, borderColor: Cores.verde }]}>
-          {mostrarTempo ? (
-            <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
-              ✓
-            </Texto>
-          ) : null}
-        </View>
-        <Texto variante="corpo">Mostrar o tempo</Texto>
-      </Pressable>
+      <View style={estilos.opcoes}>
+        {(
+          [
+            ['Mostrar o tempo', mostrarTempo, () => setMostrarTempo((m) => !m)],
+            ['Mostrar o treino', mostrarTreino, () => setMostrarTreino((m) => !m)],
+          ] as const
+        ).map(([texto, ligado, trocar]) => (
+          <Pressable key={texto} onPress={trocar} style={estilos.opcaoTempo} hitSlop={6}>
+            <View style={[estilos.caixinha, ligado && { backgroundColor: Cores.verde, borderColor: Cores.verde }]}>
+              {ligado ? (
+                <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+                  ✓
+                </Texto>
+              ) : null}
+            </View>
+            <Texto variante="corpo">{texto}</Texto>
+          </Pressable>
+        ))}
+      </View>
 
       <View style={estilos.palco} onLayout={aoMedirPalco}>
         {largura > 0 ? (
@@ -368,7 +380,8 @@ const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   seletor: { flexDirection: 'row', backgroundColor: Cores.superficie, borderRadius: 12, padding: 4, gap: 4, marginHorizontal: Espaco.lg },
   opcao: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 9 },
-  opcaoTempo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, marginHorizontal: Espaco.lg, marginTop: Espaco.sm, minHeight: 36 },
+  opcoes: { flexDirection: 'row', flexWrap: 'wrap', columnGap: Espaco.lg, marginHorizontal: Espaco.lg, marginTop: Espaco.sm },
+  opcaoTempo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, minHeight: 36 },
   caixinha: { width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: Cores.borda, alignItems: 'center', justifyContent: 'center' },
   palco: { flex: 1, alignItems: 'center', justifyContent: 'center', margin: Espaco.md },
   xadrez: { backgroundColor: '#2b2d2b', borderWidth: 1, borderColor: Cores.borda, borderStyle: 'dashed', borderRadius: Raio.lg },
