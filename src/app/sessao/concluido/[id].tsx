@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
+import { ComemoracaoConquista } from '@/components/comemoracao-conquista';
 import { MapaPercurso } from '@/components/mapa-percurso';
 import { PublicarTreino } from '@/components/publicar-treino';
 import { Texto } from '@/components/texto';
@@ -160,6 +161,8 @@ export default function TreinoConcluido() {
           onPress={() => (revendo ? router.back() : router.replace('/'))}
         />
       </View>
+      {/* acabou de treinar (não é revendo pelo histórico): ganhou conquista nova? */}
+      <ComemoracaoConquista verificar={!revendo} />
     </SafeAreaView>
   );
 }

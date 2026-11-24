@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -7,6 +7,7 @@ import { GraficoLinha } from '@/components/grafico-linha';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import { textoKg, textoQuando, useDadosAluno } from '@/lib/dados';
+import { listarConquistas, type Conquista } from '@/lib/conquistas';
 import { useEvolucao } from '@/lib/evolucao';
 
 // Aba "Evolução": resumo do mês, gráfico de carga por exercício e recordes.
@@ -16,6 +17,12 @@ function dataCurta(d: Date) {
 }
 
 export default function Evolucao() {
+  const [conquistas, setConquistas] = useState<Conquista[]>([]);
+  useFocusEffect(
+    useCallback(() => {
+      listarConquistas().then(setConquistas).catch(() => {});
+    }, []),
+  );
   const { recordes } = useDadosAluno();
   const evo = useEvolucao();
   const [escolhido, setEscolhido] = useState<string | null>(null);
@@ -113,6 +120,25 @@ export default function Evolucao() {
             </View>
           </>
         )}
+
+        <Pressable onPress={() => router.push('/conquistas')} style={estilos.botaoHistorico}>
+          <View style={{ flex: 1, gap: 4 }}>
+            <Texto variante="subtitulo" style={{ fontSize: 20 }}>
+              Conquistas · {conquistas.filter((c) => c.conquistadaEm).length} de {conquistas.length || '–'}
+            </Texto>
+            <Texto style={{ fontSize: 26, lineHeight: 32 }} numberOfLines={1}>
+              {conquistas
+                .filter((c) => c.conquistadaEm)
+                .sort((a, b) => b.conquistadaEm!.getTime() - a.conquistadaEm!.getTime())
+                .slice(0, 6)
+                .map((c) => c.emoji)
+                .join(' ') || '🔒'}
+            </Texto>
+          </View>
+          <Texto variante="subtitulo" cor={Cores.verde}>
+            ›
+          </Texto>
+        </Pressable>
 
         <Pressable onPress={() => router.push('/historico')} style={estilos.botaoHistorico}>
           <View style={{ flex: 1 }}>

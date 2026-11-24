@@ -90,6 +90,7 @@ function Navegacao() {
         <Stack.Screen name="publicar" />
         <Stack.Screen name="clube/[id]" />
         <Stack.Screen name="notificacoes" />
+        <Stack.Screen name="conquistas" />
         <Stack.Screen name="timer/[modalidade]" options={{ gestureEnabled: false }} />
         <Stack.Screen name="gps/[modalidade]" options={{ gestureEnabled: false }} />
       </Stack.Protected>
