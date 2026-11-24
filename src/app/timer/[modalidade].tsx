@@ -630,7 +630,7 @@ export default function Timer() {
           style={[estilos.tempo, mmss(estado.principalS).length > 5 && { fontSize: 100, lineHeight: 104 }]}>
           {mmss(estado.principalS)}
         </Texto>
-        {(cfg.modo === 'prova' || cfg.modo === 'janela') && estacaoAgora ? (
+        {(cfg.modo === 'janela' || (cfg.modo === 'prova' && parciais.length > 0)) && estacaoAgora ? (
           <View style={{ alignItems: 'center' }}>
             <Texto variante="titulo" cor={Cores.texto} style={{ textAlign: 'center' }} numberOfLines={2}>
               {estacaoAgora.nome}
@@ -642,7 +642,7 @@ export default function Timer() {
             ) : null}
           </View>
         ) : null}
-        {cfg.modo === 'prova' ? (
+        {cfg.modo === 'prova' && parciais.length > 0 ? (
           <Texto variante="subtitulo" style={{ textAlign: 'center' }}>
             Esta estação: {mmss(tempoParte)}
           </Texto>
@@ -685,21 +685,35 @@ export default function Timer() {
 
       {cfg.modo === 'prova' ? (
         <View style={{ paddingHorizontal: Espaco.lg, gap: Espaco.sm }}>
-          {parciais.length > 0 ? (
+          {parciais.length === 0 ? (
+            <ScrollView style={estilos.listaRodando} contentContainerStyle={{ gap: 4, padding: Espaco.md }}>
+              {seq.map((e, i) => (
+                <Texto key={i} variante="corpo" cor={e.volta === 0 ? Cores.textoSecundario : Cores.texto}>
+                  {i + 1}. {textoEstacao(e)}
+                  {e.volta > 0 && cfg.voltas > 1 ? `  (volta ${e.volta})` : ''}
+                </Texto>
+              ))}
+            </ScrollView>
+          ) : (
             <Texto variante="legenda" numberOfLines={1}>
               Anterior: {textoEstacao(seq[parciais.length - 1])} em {mmss(parciais[parciais.length - 1])}
             </Texto>
-          ) : null}
-          <Pressable onPress={proximaParte} style={[estilos.botaoProxima, { backgroundColor: info.cor }]}>
-            <Texto variante="display" cor={Cores.preto} style={{ fontSize: 32, lineHeight: 34 }}>
-              {parciais.length + 1 >= seq.length ? 'TERMINEI' : 'PRÓXIMA'}
+          )}
+          <Pressable onPress={terminar} style={[estilos.botaoProxima, { backgroundColor: info.cor }]}>
+            <Texto variante="display" cor={Cores.preto} style={{ fontSize: 36, lineHeight: 38 }}>
+              TERMINEI
             </Texto>
-            {parciais.length + 1 < seq.length ? (
-              <Texto variante="legenda" cor={Cores.preto}>
-                depois: {textoEstacao(seq[parciais.length + 1])}
-              </Texto>
-            ) : null}
+            <Texto variante="legenda" cor={Cores.preto}>
+              liga o tempo e pode largar o celular
+            </Texto>
           </Pressable>
+          {parciais.length + 1 < seq.length ? (
+            <Pressable onPress={proximaParte} style={{ alignSelf: 'center', paddingVertical: 6 }} hitSlop={10}>
+              <Texto variante="corpo" cor={Cores.textoSecundario}>
+                ✓ marcar estação (opcional){parciais.length > 0 ? ` · ${parciais.length}/${seq.length}` : ''}
+              </Texto>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -752,5 +766,6 @@ const estilos = StyleSheet.create({
   botaoRodada: { flex: 1.4, height: 120, borderRadius: Raio.lg, alignItems: 'center', justifyContent: 'center' },
   botaoProxima: { height: 110, borderRadius: Raio.lg, alignItems: 'center', justifyContent: 'center' },
   dupla: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm },
+  listaRodando: { maxHeight: 190, backgroundColor: Cores.superficie, borderRadius: Raio.lg },
   rodapeRodando: { flexDirection: 'row', gap: Espaco.sm, padding: Espaco.lg - 4 },
 });

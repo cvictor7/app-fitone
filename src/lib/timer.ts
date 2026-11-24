@@ -35,8 +35,8 @@ export const EXPLICACAO_MODO: Record<ModoTimer, string> = {
   emom: 'Uma tarefa no começo de cada minuto; o que sobra é descanso.',
   fortime: 'Terminar o mais rápido possível (com limite de tempo, se quiser).',
   tabata: 'Trabalho e descanso alternados (20 s / 10 s × 8).',
-  prova: 'Monte as estações (com ou sem corrida) e faça no menor tempo. Toque em Próxima a cada estação.',
-  janela: 'Cada estação tem um tempo fixo (ex.: 1 min). Terminou antes? Descansa o que sobrar. Acabou o tempo, vai para a próxima.',
+  prova: 'Monte as estações e faça no menor tempo. Liga o cronômetro e pode largar o celular: no fim, toque em Terminei. Marcar cada estação é opcional.',
+  janela: 'Cada estação tem um tempo fixo (ex.: 1 min) e o app troca sozinho, falando a próxima. Não precisa tocar em nada.',
 };
 
 export const CONFIG_PADRAO: ConfigTimer = {
@@ -230,6 +230,13 @@ export function resumoTimer(c: ConfigTimer, decorridoS: number, rodadas: number,
       const seq = sequencia(c);
       const linhas = parciais.map((p, i) => `${textoEstacao(seq[i])} ${mmss(p)}`);
       const feitas = parciais.length;
+      if (feitas === 0) {
+        // não marcou estação por estação (o normal): só o tempo total e o treino feito
+        return `Estações · ${mmss(decorridoS)}${c.voltas > 1 ? ` (${c.voltas} voltas)` : ''}\n${seq
+          .filter((e) => e.volta <= 1)
+          .map(textoEstacao)
+          .join(' · ')}`;
+      }
       const incompleto = feitas < seq.length ? ` · ${feitas} de ${seq.length} estações` : '';
       return `Estações · ${mmss(decorridoS)}${c.voltas > 1 ? ` (${c.voltas} voltas)` : ''}${incompleto}\n${linhas.join(' · ')}`;
     }
