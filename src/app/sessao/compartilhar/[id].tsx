@@ -44,7 +44,8 @@ export default function Compartilhar() {
   const [foto, setFoto] = useState<string | null>(null);
   const [fundoSelo, setFundoSelo] = useState(false);
   const [mostrarTempo, setMostrarTempo] = useState(true); // tirar o cronômetro: mostra só o treino feito
-  const [mostrarTreino, setMostrarTreino] = useState(true); // tirar estações/números: fica só FIT ONE + o nome do treino
+  const [mostrarTreino, setMostrarTreino] = useState(true);
+  const [fotoInteira, setFotoInteira] = useState(true); // não corta ninguém da foto vertical // tirar estações/números: fica só FIT ONE + o nome do treino
   const [palco, setPalco] = useState({ w: 0, h: 0 });
   const [selo, setSelo] = useState({ w: 0, h: 0 }); // tamanho natural do selo
   const [gerando, setGerando] = useState(false);
@@ -274,6 +275,7 @@ export default function Compartilhar() {
           [
             ['Mostrar o tempo', mostrarTempo, () => setMostrarTempo((m) => !m)],
             ['Mostrar o treino', mostrarTreino, () => setMostrarTreino((m) => !m)],
+            ...(comFoto ? ([['Foto inteira', fotoInteira, () => setFotoInteira((m) => !m)]] as const) : []),
           ] as const
         ).map(([texto, ligado, trocar]) => (
           <Pressable key={texto} onPress={trocar} style={estilos.opcaoTempo} hitSlop={6}>
@@ -298,7 +300,18 @@ export default function Compartilhar() {
               tipo === 'card' && { borderWidth: 1, borderColor: Cores.borda }, // só na tela, não sai na imagem
             ]}>
             <View ref={alvo} collapsable={false} style={{ width: largura, height: altura, backgroundColor: tipo === 'card' ? Cores.fundo : 'transparent' }}>
-              {comFoto ? <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+              {comFoto ? (
+                fotoInteira ? (
+                  <>
+                    {/* foto vertical inteira: a mesma foto desfocada preenche as bordas (igual ao Instagram) */}
+                    <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" blurRadius={25} />
+                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
+                    <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="contain" />
+                  </>
+                ) : (
+                  <Image source={{ uri: foto! }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                )
+              ) : null}
 
               <Animated.View
                 {...(mexe ? arrastar.panHandlers : {})}
