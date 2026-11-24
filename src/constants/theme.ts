@@ -27,6 +27,7 @@ export type Modalidade =
   | 'hybrid'
   | 'cross'
   | 'corrida'
+  | 'caminhada'
   | 'bike'
   | 'livre';
 
@@ -36,6 +37,7 @@ export const Modalidades: Record<Modalidade, { nome: string; cor: string }> = {
   hybrid: { nome: 'Hybrid', cor: '#B7A6FF' },
   cross: { nome: 'Cross', cor: '#FF5E7A' },
   corrida: { nome: 'Corrida', cor: '#FF8A3D' },
+  caminhada: { nome: 'Caminhada', cor: '#5AB8FF' },
   bike: { nome: 'Bike', cor: '#3DD6C4' },
   livre: { nome: 'Livre', cor: '#A9AEA9' },
 };

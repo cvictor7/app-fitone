@@ -29,6 +29,8 @@ export type ExercicioAtivo = {
   instrucoes?: string | null;
   anterior: { kg: number | null; reps: number | null }[]; // séries do último treino com esse exercício
   series: SerieAtiva[];
+  nota?: string; // anotação do aluno hoje ("senti o ombro")
+  notaAnterior?: { texto: string; em: string } | null; // a última anotação nesse exercício
 };
 
 export type TreinoAtivo = {
@@ -110,8 +112,25 @@ async function buscarAnteriores(exercicioIds: string[]) {
   return mapa;
 }
 
+// Última anotação do aluno em cada exercício (para mostrar "Da última vez você anotou...")
+async function buscarNotasAnteriores(exercicioIds: string[]) {
+  const mapa = new Map<string, { texto: string; em: string }>();
+  if (exercicioIds.length === 0) return mapa;
+  const { data } = await supabase
+    .from('notas_exercicio')
+    .select('exercicio_id, texto, criado_em')
+    .in('exercicio_id', exercicioIds)
+    .order('criado_em', { ascending: false })
+    .limit(100);
+  for (const n of (data ?? []) as any[]) {
+    if (!mapa.has(n.exercicio_id)) mapa.set(n.exercicio_id, { texto: n.texto, em: n.criado_em });
+  }
+  return mapa;
+}
+
 export async function montarTreinoAtivo(treino: Treino, gymId: string | null): Promise<TreinoAtivo> {
-  const anteriores = await buscarAnteriores(treino.exercicios.map((e) => e.exercicioId));
+  const ids = treino.exercicios.map((e) => e.exercicioId);
+  const [anteriores, notas] = await Promise.all([buscarAnteriores(ids), buscarNotasAnteriores(ids).catch(() => new Map())]);
 
   return {
     sessaoId: Crypto.randomUUID(),
@@ -139,6 +158,8 @@ export async function montarTreinoAtivo(treino: Treino, gymId: string | null): P
         midiaUrl: e.midiaUrl,
         instrucoes: e.instrucoes,
         anterior: ant,
+        nota: '',
+        notaAnterior: notas.get(e.exercicioId) ?? null,
         // Já vem preenchido: carga da última vez (ou a sugerida pelo personal) e reps máximas
         series: Array.from({ length: e.series }, (_, i) => ({
           numero: i + 1,
@@ -197,6 +218,12 @@ export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
     .update({ status: 'concluida', concluida_em: new Date().toISOString() })
     .eq('id', sessaoId);
   if (r3.error) return { ok: false, erro: r3.error.message };
+
+  // anotações de cada exercício (se falhar, o treino já está salvo: não trava)
+  const notas = t.exercicios
+    .filter((e) => e.nota && e.nota.trim())
+    .map((e) => ({ sessao_id: sessaoId, exercicio_id: e.exercicioId, texto: e.nota!.trim().slice(0, 300) }));
+  if (notas.length > 0) await supabase.from('notas_exercicio').upsert(notas, { onConflict: 'sessao_id,exercicio_id' });
 
   return { ok: true, sessaoId };
 }

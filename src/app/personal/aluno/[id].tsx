@@ -7,6 +7,7 @@ import { Avatar } from '@/components/avatar';
 import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { FolhaOpcoes, type ConteudoFolha } from '@/components/folha-opcoes';
+import { NotasAluno } from '@/components/notas-aluno';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Modalidades, Raio, type Modalidade, infoModalidade } from '@/constants/theme';
 import { textoQuando } from '@/lib/dados';
@@ -225,6 +226,8 @@ export default function FichaAluno() {
             )}
           </View>
         ) : null}
+
+        {aluno.consentiu ? <NotasAluno alunoId={aluno.id} /> : null}
 
         {outros.length > 0 ? (
           <View style={{ gap: Espaco.sm }}>

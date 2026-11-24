@@ -28,6 +28,7 @@ import {
   textoVelocidade,
   trechos,
   type EstadoGps,
+  type TipoGps,
 } from '@/lib/gps';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
@@ -40,11 +41,11 @@ type Fase = 'pronto' | 'contagem' | 'ativo' | 'pausado' | 'fim';
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
 const CHAVE = 'fitone:gps-ativo';
 
-type Guardado = { tipo: 'corrida' | 'bike'; inicio: number; movimentoS: number; estado: EstadoGps; treinoId?: string };
+type Guardado = { tipo: TipoGps; inicio: number; movimentoS: number; estado: EstadoGps; treinoId?: string };
 
 export default function TelaGps() {
   const { modalidade, treino: treinoId } = useLocalSearchParams<{ modalidade: string; treino?: string }>();
-  const tipo: 'corrida' | 'bike' = modalidade === 'bike' ? 'bike' : 'corrida';
+  const tipo: TipoGps = modalidade === 'bike' ? 'bike' : modalidade === 'caminhada' ? 'caminhada' : 'corrida';
   const info = Modalidades[tipo];
   const { gymId } = useSessao();
   const dados = useDadosAluno();
@@ -132,7 +133,7 @@ export default function TelaGps() {
       if (!g.estado?.pontos?.length) return AsyncStorage.removeItem(CHAVE);
       Alert.alert(
         'Atividade não salva',
-        `Você tem uma ${g.tipo === 'bike' ? 'pedalada' : 'corrida'} de ${textoKm(g.estado.distanciaM)} km que não foi salva.`,
+        `Você tem uma ${g.tipo === 'bike' ? 'pedalada' : g.tipo === 'caminhada' ? 'caminhada' : 'corrida'} de ${textoKm(g.estado.distanciaM)} km que não foi salva.`,
         [
           { text: 'Descartar', style: 'destructive', onPress: () => AsyncStorage.removeItem(CHAVE) },
           {
@@ -296,13 +297,13 @@ export default function TelaGps() {
   if (fase === 'fim') {
     return (
       <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-        <BarraTopo titulo={tipo === 'bike' ? 'Pedalada' : 'Corrida'} />
+        <BarraTopo titulo={tipo === 'bike' ? 'Pedalada' : tipo === 'caminhada' ? 'Caminhada' : 'Corrida'} />
         <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
           {coordTrechos.flat().length > 1 ? <MapaPercurso trechos={coordTrechos} style={{ height: 240 }} /> : null}
           <View style={estilos.numerosFim}>
             <Numero n={textoKm(estado.distanciaM)} r="km" grande cor={info.cor} />
             <Numero n={textoTempo(acumuladoS.current)} r="tempo" />
-            {tipo === 'corrida' ? (
+            {tipo !== 'bike' ? (
               <Numero n={textoRitmo(acumuladoS.current, estado.distanciaM)} r="ritmo /km" />
             ) : (
               <Numero n={textoVelocidade(acumuladoS.current, estado.distanciaM)} r="km/h" />
@@ -403,7 +404,7 @@ export default function TelaGps() {
             </View>
             <View style={estilos.numeros}>
               <Numero n={textoTempo(tempoS)} r="tempo" />
-              {tipo === 'corrida' ? (
+              {tipo !== 'bike' ? (
                 <Numero n={textoRitmo(tempoS, estado.distanciaM)} r="ritmo médio" />
               ) : (
                 <Numero n={textoVelocidade(tempoS, estado.distanciaM)} r="km/h" />

@@ -3,6 +3,7 @@
 
 export type Ponto = { lat: number; lng: number; t: number; precisao?: number | null; novoTrecho?: boolean };
 export type Parcial = { km: number; s: number }; // tempo daquele km, em segundos
+export type TipoGps = 'corrida' | 'caminhada' | 'bike';
 
 export type EstadoGps = {
   pontos: Ponto[]; // todos os pontos aceitos (para o mapa)
@@ -26,7 +27,7 @@ export function distancia(a: { lat: number; lng: number }, b: { lat: number; lng
 }
 
 /** Velocidade máxima aceitável (m/s): acima disso é pulo do GPS. */
-export const VELOCIDADE_MAX = { corrida: 9, bike: 25 } as const; // ~32 km/h correndo, 90 km/h pedalando
+export const VELOCIDADE_MAX = { corrida: 9, caminhada: 4.5, bike: 25 } as const; // ~32 km/h correndo, 16 km/h andando, 90 km/h pedalando
 
 /**
  * Junta um ponto novo. "emMovimentoS" = tempo de atividade até agora (sem pausas),
@@ -36,7 +37,7 @@ export function adicionarPonto(
   e: EstadoGps,
   p: Ponto,
   emMovimentoS: number,
-  tipo: 'corrida' | 'bike',
+  tipo: TipoGps,
 ): { estado: EstadoGps; kmFechado: Parcial | null } {
   if (p.precisao != null && p.precisao > 30) return { estado: e, kmFechado: null }; // muito impreciso
   const anterior = e.pontos[e.pontos.length - 1];
@@ -120,20 +121,20 @@ export function textoTempo(s: number) {
 }
 
 /** O que a voz fala ao fechar cada km. */
-export function falaDoKm(p: Parcial, tipo: 'corrida' | 'bike') {
+export function falaDoKm(p: Parcial, tipo: TipoGps) {
   const min = Math.floor(p.s / 60);
   const seg = p.s % 60;
   const tempo = `${min} ${min === 1 ? 'minuto' : 'minutos'}${seg ? ` e ${seg} segundos` : ''}`;
-  return `${p.km} ${p.km === 1 ? 'quilômetro' : 'quilômetros'}. ${tipo === 'corrida' ? 'Último quilômetro em' : 'Parcial de'} ${tempo}.`;
+  return `${p.km} ${p.km === 1 ? 'quilômetro' : 'quilômetros'}. ${tipo === 'bike' ? 'Parcial de' : 'Último quilômetro em'} ${tempo}.`;
 }
 
 /** Resumo que vai em "observação" (aparece no histórico, no feed e no card de compartilhar). */
-export function resumoPercurso(tipo: 'corrida' | 'bike', distanciaM: number, duracaoS: number, parciais: Parcial[]) {
+export function resumoPercurso(tipo: TipoGps, distanciaM: number, duracaoS: number, parciais: Parcial[]) {
   const base =
-    tipo === 'corrida'
+    tipo !== 'bike'
       ? `${textoKm(distanciaM)} km · ritmo ${textoRitmo(duracaoS, distanciaM)}/km`
       : `${textoKm(distanciaM)} km · ${textoVelocidade(duracaoS, distanciaM)} km/h`;
   if (parciais.length === 0) return base;
   const melhor = parciais.reduce((a, b) => (b.s < a.s ? b : a));
-  return tipo === 'corrida' ? `${base} · melhor km ${textoTempo(melhor.s)}` : base;
+  return tipo !== 'bike' ? `${base} · melhor km ${textoTempo(melhor.s)}` : base;
 }

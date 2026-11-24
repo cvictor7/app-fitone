@@ -8,12 +8,9 @@ import { Cores, Espaco, Raio } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
 
-// Aba "Perfil". Login, consentimentos e exclusão de conta entram nas Etapas 4 e 14.
+// Aba "Perfil" (aluno, personal e admin): editar perfil, privacidade, sair, excluir conta.
 
-const ITENS_FIXOS = [
-  { titulo: 'Privacidade', detalhe: 'quem vê meus treinos' },
-  { titulo: 'Relógio e apps', detalhe: 'Apple Saúde, Strava · Fase 2' },
-];
+type Item = { titulo: string; detalhe?: string; abrir: () => void };
 
 function iniciais(nome: string) {
   const partes = nome.trim().split(/\s+/);
@@ -23,11 +20,36 @@ function iniciais(nome: string) {
 export function TelaPerfil() {
   const { perfil, sessao, papel, sair } = useSessao();
   const { plano } = useDadosAluno();
-  const ehPersonal = papel === 'personal' || papel === 'admin';
-  const ITENS = ehPersonal
-    ? ITENS_FIXOS.filter((i) => i.titulo === 'Privacidade')
-    : [{ titulo: 'Meu personal', detalhe: plano?.personalNome ?? 'nenhum ainda' }, ...ITENS_FIXOS];
+  const equipe = papel === 'personal' || papel === 'admin';
   const nome = perfil?.nome || 'Sem nome';
+
+  const itens: Item[] = [
+    {
+      titulo: 'Editar perfil',
+      detalhe: 'nome e senha',
+      abrir: () => router.push((equipe ? '/personal/editar-perfil' : '/editar-perfil') as any),
+    },
+    ...(!equipe
+      ? [
+          { titulo: 'Meu personal', detalhe: plano?.personalNome ?? 'nenhum ainda', abrir: () => router.push('/treinar') },
+          { titulo: 'Conquistas', detalhe: 'medalhas dos seus treinos', abrir: () => router.push('/conquistas') },
+        ]
+      : []),
+    { titulo: 'Privacidade', detalhe: equipe ? 'política e dados' : 'quem vê meus treinos', abrir: () => router.push('/privacidade') },
+    ...(!equipe
+      ? [
+          {
+            titulo: 'Relógio e apps',
+            detalhe: 'Apple Saúde, Health Connect, Strava',
+            abrir: () =>
+              Alert.alert(
+                'Relógio e apps',
+                'Na versão da loja, o app lê seus treinos do Apple Saúde (iPhone) e do Health Connect (Android): qualquer relógio que grave lá funciona. Enquanto isso, use o GPS do app para corrida, caminhada e bike.',
+              ),
+          },
+        ]
+      : []),
+  ];
 
   function confirmarSaida() {
     Alert.alert('Sair da conta?', 'Para entrar de novo, use seu e-mail e senha.', [
@@ -39,27 +61,27 @@ export function TelaPerfil() {
   return (
     <SafeAreaView style={estilos.tela} edges={['top']}>
       <ScrollView contentContainerStyle={estilos.conteudo}>
-        <View style={estilos.cabecalho}>
+        <Pressable onPress={itens[0].abrir} style={estilos.cabecalho}>
           <View style={estilos.avatar}>
             <Texto variante="titulo" cor={Cores.preto}>
               {iniciais(nome)}
             </Texto>
           </View>
-          <View style={{ gap: 2 }}>
+          <View style={{ gap: 2, flex: 1 }}>
             <Texto variante="subtitulo">{nome}</Texto>
             <Texto variante="legenda">
               {papel === 'admin' ? 'Admin' : papel === 'personal' ? 'Personal' : 'Aluno'} · Fit One Manaus
             </Texto>
             <Texto variante="legenda">{sessao?.user.email}</Texto>
           </View>
-        </View>
+        </Pressable>
 
         <View style={estilos.lista}>
-          {ITENS.map((item, i) => (
+          {itens.map((item, i) => (
             <Pressable
               key={item.titulo}
               accessibilityRole="button"
-              onPress={() => (item.titulo === 'Privacidade' ? router.push('/privacidade') : Alert.alert(item.titulo, 'Chega nas próximas etapas.'))}
+              onPress={item.abrir}
               style={({ pressed }) => [estilos.linha, i > 0 && estilos.separador, pressed && { opacity: 0.7 }]}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Texto variante="corpo">{item.titulo}</Texto>

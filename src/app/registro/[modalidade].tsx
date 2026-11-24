@@ -92,9 +92,9 @@ export default function RegistroRapido() {
           </Texto>
         </View>
 
-        {modalidade === 'corrida' || modalidade === 'bike' ? (
+        {modalidade === 'corrida' || modalidade === 'caminhada' || modalidade === 'bike' ? (
           <Botao
-            titulo={modalidade === 'bike' ? 'Pedalar com GPS' : 'Correr com GPS'}
+            titulo={modalidade === 'bike' ? 'Pedalar com GPS' : modalidade === 'caminhada' ? 'Caminhar com GPS' : 'Correr com GPS'}
             onPress={() => router.replace(`/gps/${modalidade}${treinoId ? `?treino=${treinoId}` : ''}` as any)}
           />
         ) : null}

@@ -367,6 +367,8 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                     ? 'Ex.: Aquecimento 10 min. WOD AMRAP 15: 10 thrusters 30 kg, 15 box jumps, 200 m remo.'
                     : treino.modalidade === 'corrida'
                       ? 'Ex.: 10 min leve + 6 × 400 m forte com 1 min trotando + 10 min leve.'
+                      : treino.modalidade === 'caminhada'
+                        ? 'Ex.: 40 min em ritmo firme, dá para conversar mas com esforço.'
                       : treino.modalidade === 'bike'
                         ? 'Ex.: 40 min em zona 2, cadência 85–90.'
                         : 'Ex.: circuito 4 voltas: 12 KB swing, 10 burpees, 300 m remo, 20 wall balls.'
@@ -385,7 +387,7 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                     style={{ minHeight: 50, fontSize: 16 }}
                   />
                 </View>
-                {treino.modalidade === 'corrida' || treino.modalidade === 'bike' ? (
+                {treino.modalidade === 'corrida' || treino.modalidade === 'caminhada' || treino.modalidade === 'bike' ? (
                   <View style={{ flex: 1, gap: 4 }}>
                     <Texto variante="rotulo">DISTÂNCIA (KM)</Texto>
                     <Campo

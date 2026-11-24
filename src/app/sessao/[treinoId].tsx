@@ -434,6 +434,11 @@ export default function ModoTreino() {
                 {ex.observacao}
               </Texto>
             ) : null}
+            {ex.notaAnterior ? (
+              <Texto variante="legenda" cor={Cores.amarelo}>
+                📝 Da última vez você anotou: "{ex.notaAnterior.texto}"
+              </Texto>
+            ) : null}
             {ex.midiaUrl || ex.instrucoes ? (
               <Pressable onPress={() => setVerVideo(true)} style={estilos.botaoVideo}>
                 <Texto variante="corpo" style={{ fontFamily: Fontes.textoSemi }}>
@@ -537,6 +542,22 @@ export default function ModoTreino() {
               </Pressable>
             ) : null}
           </View>
+
+          {/* Anotação do aluno neste exercício (aparece na próxima vez e para o personal) */}
+          <TextInput
+            value={ex.nota ?? ''}
+            onChangeText={(v) =>
+              atualizar((t) => {
+                t.exercicios[t.atual].nota = v.slice(0, 300);
+                return t;
+              })
+            }
+            placeholder="📝 Como foi? (ex.: senti o ombro, dá para subir a carga)"
+            placeholderTextColor={Cores.textoApagado}
+            multiline
+            maxLength={300}
+            style={estilos.nota}
+          />
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -599,6 +620,19 @@ export default function ModoTreino() {
 }
 
 const estilos = StyleSheet.create({
+  nota: {
+    minHeight: 52,
+    marginTop: Espaco.md,
+    borderRadius: Raio.md,
+    borderWidth: 1.5,
+    borderColor: Cores.borda,
+    paddingHorizontal: Espaco.md,
+    paddingVertical: 12,
+    color: Cores.texto,
+    fontFamily: Fontes.texto,
+    fontSize: 16,
+    textAlignVertical: 'top',
+  },
   tela: { flex: 1, backgroundColor: Cores.fundo },
   topo: {
     flexDirection: 'row',

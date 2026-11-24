@@ -276,7 +276,7 @@ export async function salvarPlano(p: PlanoEditavel, gymId: string, personalId: s
       cardio: t.modalidade === 'musculacao' ? t.cardio.trim() || null : null,
       descricao: t.modalidade === 'musculacao' ? null : t.descricao.trim() || null,
       duracao_min: t.modalidade === 'musculacao' ? null : num(t.duracaoMin),
-      distancia_km: t.modalidade === 'corrida' || t.modalidade === 'bike' ? num(t.distanciaKm) : null,
+      distancia_km: t.modalidade === 'corrida' || t.modalidade === 'caminhada' || t.modalidade === 'bike' ? num(t.distanciaKm) : null,
     };
     let treinoId = t.id;
     if (treinoId) {
