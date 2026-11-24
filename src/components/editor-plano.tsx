@@ -429,6 +429,19 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                     })}
                   </View>
                   <EditorEstacoes
+                    titulo="ANTES DO BLOCO (1 VEZ)"
+                    extra
+                    estacoes={treino.timer?.antes ?? []}
+                    cor={Modalidades[treino.modalidade].cor}
+                    aoMudar={(antes) =>
+                      mudar((p) => {
+                        const atual = p.treinos[aba].timer ?? { modo: 'prova', estacoes: [], voltas: 1, janelaS: 60 };
+                        p.treinos[aba].timer = { ...atual, antes };
+                      })
+                    }
+                  />
+                  <EditorEstacoes
+                    titulo={(treino.timer?.voltas ?? 1) > 1 ? `BLOCO QUE REPETE × ${treino.timer?.voltas}` : 'BLOCO DE ESTAÇÕES'}
                     estacoes={treino.timer?.estacoes ?? []}
                     cor={Modalidades[treino.modalidade].cor}
                     aoMudar={(estacoes) =>
@@ -438,10 +451,22 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                       })
                     }
                   />
+                  <EditorEstacoes
+                    titulo="DEPOIS DO BLOCO (1 VEZ)"
+                    extra
+                    estacoes={treino.timer?.depois ?? []}
+                    cor={Modalidades[treino.modalidade].cor}
+                    aoMudar={(depois) =>
+                      mudar((p) => {
+                        const atual = p.treinos[aba].timer ?? { modo: 'prova', estacoes: [], voltas: 1, janelaS: 60 };
+                        p.treinos[aba].timer = { ...atual, depois };
+                      })
+                    }
+                  />
                   {treino.timer?.estacoes.length ? (
                     <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
                       <View style={{ flex: 1, gap: 4 }}>
-                        <Texto variante="rotulo">VOLTAS</Texto>
+                        <Texto variante="rotulo">VOLTAS DO BLOCO</Texto>
                         <Campo
                           value={treino.timer.voltas ? String(treino.timer.voltas) : ''}
                           onChangeText={(t) => mudar((p) => void (p.treinos[aba].timer!.voltas = Math.min(20, Number(t.replace(/\D/g, '')) || 0)))}
@@ -449,6 +474,18 @@ export function EditorPlano({ id, aluno, modo }: Props) {
                           style={{ minHeight: 50, fontSize: 16 }}
                         />
                       </View>
+                      {treino.timer.modo !== 'janela' ? (
+                        <View style={{ flex: 1, gap: 4 }}>
+                          <Texto variante="rotulo">LIMITE (MIN)</Texto>
+                          <Campo
+                            value={treino.timer.limiteMin ? String(treino.timer.limiteMin) : ''}
+                            onChangeText={(t) => mudar((p) => void (p.treinos[aba].timer!.limiteMin = Math.min(180, Number(t.replace(/\D/g, '')) || 0)))}
+                            keyboardType="number-pad"
+                            placeholder="sem"
+                            style={{ minHeight: 50, fontSize: 16 }}
+                          />
+                        </View>
+                      ) : null}
                       {treino.timer.modo === 'janela' ? (
                         <View style={{ flex: 1, gap: 4 }}>
                           <Texto variante="rotulo">SEGUNDOS POR ESTAÇÃO</Texto>

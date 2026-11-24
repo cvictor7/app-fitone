@@ -8,7 +8,19 @@ import { ESTACOES_RAPIDAS, PROVA_OFICIAL, ehCorrida, type Estacao } from '@/lib/
 // edite nome e quantidade, mude a ordem (↑ ↓) ou tire (✕). Usado pelo aluno (timer)
 // e pelo personal (plano).
 
-export function EditorEstacoes({ estacoes, aoMudar, cor = Cores.verde }: { estacoes: Estacao[]; aoMudar: (e: Estacao[]) => void; cor?: string }) {
+export function EditorEstacoes({
+  estacoes,
+  aoMudar,
+  cor = Cores.verde,
+  titulo = 'ESTAÇÕES',
+  extra = false,
+}: {
+  estacoes: Estacao[];
+  aoMudar: (e: Estacao[]) => void;
+  cor?: string;
+  titulo?: string;
+  extra?: boolean; // parte "antes"/"depois" do bloco: sem o modelo da prova
+}) {
   const mudar = (i: number, parte: Partial<Estacao>) => aoMudar(estacoes.map((e, j) => (j === i ? { ...e, ...parte } : e)));
   const mover = (i: number, d: -1 | 1) => {
     const j = i + d;
@@ -21,13 +33,17 @@ export function EditorEstacoes({ estacoes, aoMudar, cor = Cores.verde }: { estac
   return (
     <View style={{ gap: Espaco.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Texto variante="rotulo">ESTAÇÕES ({estacoes.length})</Texto>
+        <Texto variante="rotulo">
+          {titulo} ({estacoes.length})
+        </Texto>
         <View style={{ flexDirection: 'row', gap: Espaco.md }}>
-          <Pressable onPress={() => aoMudar(PROVA_OFICIAL)} hitSlop={8}>
-            <Texto variante="legenda" cor={cor}>
-              Modelo da prova
-            </Texto>
-          </Pressable>
+          {!extra ? (
+            <Pressable onPress={() => aoMudar(PROVA_OFICIAL)} hitSlop={8}>
+              <Texto variante="legenda" cor={cor}>
+                Modelo da prova
+              </Texto>
+            </Pressable>
+          ) : null}
           {estacoes.length ? (
             <Pressable onPress={() => aoMudar([])} hitSlop={8}>
               <Texto variante="legenda" cor={Cores.textoSecundario}>
@@ -39,7 +55,9 @@ export function EditorEstacoes({ estacoes, aoMudar, cor = Cores.verde }: { estac
       </View>
 
       {estacoes.length === 0 ? (
-        <Texto variante="legenda">Toque nos atalhos abaixo para montar (ex.: Corrida 200 m → Wall ball → Corrida 200 m → Trenó).</Texto>
+        <Texto variante="legenda">
+          {extra ? 'Toque num atalho (ex.: Corrida 400 m).' : 'Toque nos atalhos abaixo para montar (ex.: Corrida 200 m → Wall ball → Corrida 200 m → Trenó).'}
+        </Texto>
       ) : (
         estacoes.map((e, i) => (
           <View key={i} style={[estilos.linha, { borderLeftColor: ehCorrida(e) ? Cores.textoSecundario : cor }]}>

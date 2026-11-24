@@ -84,13 +84,17 @@ export async function carregarRanking(gymId: string): Promise<LinhaRanking[]> {
   }));
 }
 
-export async function publicarTreino(sessaoId: string, rotulo: string, legenda: string) {
-  const { error } = await supabase.rpc('publicar_treino', {
-    p_sessao: sessaoId,
-    p_rotulo: rotulo,
-    p_legenda: legenda.trim() || null,
-  });
-  if (error) throw error;
+export async function publicarTreino(sessaoId: string, rotulo: string, legenda: string, ocultarTempo = false) {
+  const base = { p_sessao: sessaoId, p_rotulo: rotulo, p_legenda: legenda.trim() || null };
+  const { error } = await supabase.rpc('publicar_treino', { ...base, p_ocultar_tempo: ocultarTempo });
+  if (!error) return;
+  // banco ainda sem o SQL 0026: publica do jeito antigo (com tempo)
+  if (error.code === 'PGRST202') {
+    const r = await supabase.rpc('publicar_treino', base);
+    if (r.error) throw r.error;
+    return;
+  }
+  throw error;
 }
 
 export async function removerPublicacao(id: string, fotoPath?: string | null) {

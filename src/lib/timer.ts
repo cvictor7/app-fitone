@@ -13,8 +13,11 @@ export type ConfigTimer = {
   rodadas: number; // EMOM e Tabata
   trabalhoS: number; // Tabata
   descansoS: number; // Tabata
-  estacoes: Estacao[]; // Estações (por tempo) e Janela
-  voltas: number; // quantas vezes repete a lista de estações
+  estacoes: Estacao[]; // Estações (por tempo) e Janela: o bloco que repete
+  voltas: number; // quantas vezes repete o bloco
+  antes: Estacao[]; // feito 1 vez antes do bloco (ex.: Corrida 400 m)
+  depois: Estacao[]; // feito 1 vez depois do bloco (ex.: Corrida 400 m)
+  limiteMin: number; // Estações: tempo limite (0 = sem limite)
   janelaS: number; // Janela: tempo de cada estação (o que sobra é descanso)
 };
 
@@ -45,6 +48,9 @@ export const CONFIG_PADRAO: ConfigTimer = {
   descansoS: 10,
   estacoes: [],
   voltas: 1,
+  antes: [],
+  depois: [],
+  limiteMin: 0,
   janelaS: 60,
 };
 
@@ -91,15 +97,24 @@ export const ESTACOES_RAPIDAS: Estacao[] = [
 
 export const ehCorrida = (e: Estacao) => /^corrida/i.test(e.nome.trim());
 
-/** Lista completa na ordem (repete as estações pelo número de voltas). */
+/** Lista completa na ordem: antes (1 vez) + bloco × voltas + depois (1 vez). volta 0 = fora do bloco. */
 export function sequencia(c: ConfigTimer): (Estacao & { volta: number })[] {
   const base = c.estacoes.length ? c.estacoes : PROVA_OFICIAL;
   const n = Math.max(1, c.voltas || 1);
-  return Array.from({ length: n }, (_, v) => base.map((e) => ({ ...e, volta: v + 1 }))).flat();
+  const bloco = Array.from({ length: n }, (_, v) => base.map((e) => ({ ...e, volta: v + 1 }))).flat();
+  return [...(c.antes ?? []).map((e) => ({ ...e, volta: 0 })), ...bloco, ...(c.depois ?? []).map((e) => ({ ...e, volta: 0 }))];
 }
 
 // Montagem de estações guardada no treino do plano (personal prescreve)
-export type TimerPrescrito = { modo: 'prova' | 'janela'; estacoes: Estacao[]; voltas: number; janelaS: number };
+export type TimerPrescrito = {
+  modo: 'prova' | 'janela';
+  estacoes: Estacao[];
+  voltas: number;
+  janelaS: number;
+  antes?: Estacao[];
+  depois?: Estacao[];
+  limiteMin?: number;
+};
 
 export const textoEstacao = (e: Estacao) => `${e.nome}${e.alvo ? ` ${e.alvo}` : ''}`;
 
@@ -166,12 +181,13 @@ export function calcular(c: ConfigTimer, decorridoS: number, parteAtual = 0): Es
     case 'prova': {
       const seq = sequencia(c);
       const parte = seq[Math.min(parteAtual, seq.length - 1)];
+      const limite = (c.limiteMin || 0) * 60;
       return {
         principalS: t,
         fase: ehCorrida(parte) ? 'corrida' : 'trabalho',
-        rotulo: `ESTAÇÃO ${Math.min(parteAtual + 1, seq.length)} DE ${seq.length}${c.voltas > 1 ? ` · VOLTA ${parte.volta}` : ''}`,
+        rotulo: `ESTAÇÃO ${Math.min(parteAtual + 1, seq.length)} DE ${seq.length}${c.voltas > 1 && parte.volta ? ` · VOLTA ${parte.volta}` : ''}${limite ? ` · LIMITE ${c.limiteMin} MIN` : ''}`,
         progresso: Math.min(1, parteAtual / seq.length),
-        acabou: parteAtual >= seq.length,
+        acabou: parteAtual >= seq.length || (limite > 0 && t >= limite),
         chaveAviso: `prova-${parteAtual}`,
       };
     }
@@ -182,7 +198,7 @@ export function calcular(c: ConfigTimer, decorridoS: number, parteAtual = 0): Es
       return {
         principalS: c.janelaS - (t % c.janelaS),
         fase: ehCorrida(parte) ? 'corrida' : 'trabalho',
-        rotulo: `ESTAÇÃO ${Math.min(idx + 1, seq.length)} DE ${seq.length}${c.voltas > 1 ? ` · VOLTA ${parte.volta}` : ''}`,
+        rotulo: `ESTAÇÃO ${Math.min(idx + 1, seq.length)} DE ${seq.length}${c.voltas > 1 && parte.volta ? ` · VOLTA ${parte.volta}` : ''}`,
         progresso: Math.min(1, t / (c.janelaS * seq.length)),
         acabou: idx >= seq.length,
         chaveAviso: `janela-${idx}`,
@@ -213,7 +229,9 @@ export function resumoTimer(c: ConfigTimer, decorridoS: number, rodadas: number,
     case 'prova': {
       const seq = sequencia(c);
       const linhas = parciais.map((p, i) => `${textoEstacao(seq[i])} ${mmss(p)}`);
-      return `Estações · ${mmss(decorridoS)}${c.voltas > 1 ? ` (${c.voltas} voltas)` : ''}\n${linhas.join(' · ')}`;
+      const feitas = parciais.length;
+      const incompleto = feitas < seq.length ? ` · ${feitas} de ${seq.length} estações` : '';
+      return `Estações · ${mmss(decorridoS)}${c.voltas > 1 ? ` (${c.voltas} voltas)` : ''}${incompleto}\n${linhas.join(' · ')}`;
     }
     case 'janela': {
       const seq = sequencia(c);
@@ -221,4 +239,21 @@ export function resumoTimer(c: ConfigTimer, decorridoS: number, rodadas: number,
       return `Estações na janela de ${c.janelaS} s · ${seq.length} estações\n${linhas.join(' · ')}`;
     }
   }
+}
+
+/** Tira os tempos de um texto ("Wall ball 30 reps 01:20" -> "Wall ball 30 reps"), para compartilhar sem cronômetro. */
+export function semTempos(texto: string) {
+  return texto
+    .split('\n')
+    .map((l) =>
+      l
+        .replace(/\s*·?\s*\b\d{1,2}:\d{2}(:\d{2})?\b/g, '')
+        .replace(/\s+–(?=\s|$)/g, '')
+        .replace(/\(limite \d+ min\)/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/\s*·\s*$/g, '')
+        .trim(),
+    )
+    .filter(Boolean)
+    .join('\n');
 }

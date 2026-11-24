@@ -57,7 +57,16 @@ function Contador({ rotulo, valor, aoMudar, passo = 1, min = 1, max = 999, sufix
   );
 }
 
-type TreinoSalvo = { nome: string; modo: ModoTimer; estacoes: Estacao[]; voltas: number; janelaS: number };
+type TreinoSalvo = {
+  nome: string;
+  modo: ModoTimer;
+  estacoes: Estacao[];
+  voltas: number;
+  janelaS: number;
+  antes?: Estacao[];
+  depois?: Estacao[];
+  limiteMin?: number;
+};
 const CHAVE_SALVOS = 'fitone:estacoes-salvas';
 
 function falar(texto: string) {
@@ -81,6 +90,8 @@ export default function Timer() {
   const [parceiro, setParceiro] = useState('');
   const [salvos, setSalvos] = useState<TreinoSalvo[]>([]);
   const [nomeSalvar, setNomeSalvar] = useState('');
+  const [verAntes, setVerAntes] = useState(false);
+  const [verDepois, setVerDepois] = useState(false);
   const [etapa, setEtapa] = useState<Etapa>('config');
   const [nota, setNota] = useState('');
   const [agora, setAgora] = useState(Date.now());
@@ -106,7 +117,16 @@ export default function Timer() {
     if (treinoDoPlano.duracaoMin) setCfg((c) => ({ ...c, minutos: Math.min(60, treinoDoPlano.duracaoMin!) }));
     const t = treinoDoPlano.timer;
     if (t?.estacoes?.length)
-      setCfg((c) => ({ ...c, ...t, modo: t.modo ?? 'prova', voltas: Math.max(1, t.voltas || 1), janelaS: Math.max(15, t.janelaS || 60) }));
+      setCfg((c) => ({
+        ...c,
+        ...t,
+        modo: t.modo ?? 'prova',
+        voltas: Math.max(1, t.voltas || 1),
+        janelaS: Math.max(15, t.janelaS || 60),
+        antes: t.antes ?? [],
+        depois: t.depois ?? [],
+        limiteMin: t.limiteMin ?? 0,
+      }));
   }, [treinoDoPlano]);
 
   // treinos de estações que o aluno salvou no celular
@@ -116,7 +136,16 @@ export default function Timer() {
 
   async function salvarMontagem() {
     const nome = nomeSalvar.trim() || `Treino ${salvos.length + 1}`;
-    const novo: TreinoSalvo = { nome, modo: cfg.modo, estacoes: cfg.estacoes, voltas: cfg.voltas, janelaS: cfg.janelaS };
+    const novo: TreinoSalvo = {
+      nome,
+      modo: cfg.modo,
+      estacoes: cfg.estacoes,
+      voltas: cfg.voltas,
+      janelaS: cfg.janelaS,
+      antes: cfg.antes,
+      depois: cfg.depois,
+      limiteMin: cfg.limiteMin,
+    };
     const lista = [novo, ...salvos.filter((x) => x.nome !== nome)].slice(0, 20);
     setSalvos(lista);
     setNomeSalvar('');
@@ -371,7 +400,17 @@ export default function Timer() {
                         {salvos.map((t) => (
                           <Pressable
                             key={t.nome}
-                            onPress={() => mudar({ modo: t.modo, estacoes: t.estacoes, voltas: t.voltas, janelaS: t.janelaS })}
+                            onPress={() =>
+                              mudar({
+                                modo: t.modo,
+                                estacoes: t.estacoes,
+                                voltas: t.voltas,
+                                janelaS: t.janelaS,
+                                antes: t.antes ?? [],
+                                depois: t.depois ?? [],
+                                limiteMin: t.limiteMin ?? 0,
+                              })
+                            }
                             onLongPress={() =>
                               Alert.alert(`Apagar "${t.nome}"?`, undefined, [
                                 { text: 'Cancelar', style: 'cancel' },
@@ -385,12 +424,43 @@ export default function Timer() {
                       </ScrollView>
                     </View>
                   ) : null}
-                  <EditorEstacoes estacoes={cfg.estacoes} aoMudar={(e) => mudar({ estacoes: e })} cor={info.cor} />
+                  {verAntes || cfg.antes.length ? (
+                    <EditorEstacoes titulo="ANTES DO BLOCO (1 VEZ)" extra estacoes={cfg.antes} aoMudar={(e) => mudar({ antes: e })} cor={info.cor} />
+                  ) : null}
+                  <EditorEstacoes
+                    titulo={cfg.voltas > 1 ? `BLOCO QUE REPETE × ${cfg.voltas}` : 'ESTAÇÕES'}
+                    estacoes={cfg.estacoes}
+                    aoMudar={(e) => mudar({ estacoes: e })}
+                    cor={info.cor}
+                  />
+                  {verDepois || cfg.depois.length ? (
+                    <EditorEstacoes titulo="DEPOIS DO BLOCO (1 VEZ)" extra estacoes={cfg.depois} aoMudar={(e) => mudar({ depois: e })} cor={info.cor} />
+                  ) : null}
+                  {!(verAntes || cfg.antes.length) || !(verDepois || cfg.depois.length) ? (
+                    <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
+                      {!(verAntes || cfg.antes.length) ? (
+                        <Pressable onPress={() => setVerAntes(true)} style={[estilos.modo, { height: 40, flex: 1, alignItems: 'center' }]}>
+                          <Texto variante="legenda" cor={Cores.texto}>
+                            + Algo antes (ex.: 400 m)
+                          </Texto>
+                        </Pressable>
+                      ) : null}
+                      {!(verDepois || cfg.depois.length) ? (
+                        <Pressable onPress={() => setVerDepois(true)} style={[estilos.modo, { height: 40, flex: 1, alignItems: 'center' }]}>
+                          <Texto variante="legenda" cor={Cores.texto}>
+                            + Algo no fim
+                          </Texto>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
                   <View style={{ flexDirection: 'row', gap: Espaco.sm }}>
-                    <Contador rotulo="VOLTAS" valor={cfg.voltas} aoMudar={(v) => mudar({ voltas: v })} max={20} />
+                    <Contador rotulo="VOLTAS DO BLOCO" valor={cfg.voltas} aoMudar={(v) => mudar({ voltas: v })} max={20} />
                     {cfg.modo === 'janela' ? (
                       <Contador rotulo="TEMPO POR ESTAÇÃO" valor={cfg.janelaS} aoMudar={(v) => mudar({ janelaS: v })} passo={15} min={15} max={600} sufixo=" s" />
-                    ) : null}
+                    ) : (
+                      <Contador rotulo="LIMITE (0 = SEM)" valor={cfg.limiteMin} aoMudar={(v) => mudar({ limiteMin: v })} min={0} max={180} passo={5} sufixo=" min" />
+                    )}
                   </View>
                   {cfg.estacoes.length === 0 ? (
                     <Texto variante="legenda">Sem montar nada, vale o modelo da prova (8 corridas de 1 km + 8 estações).</Texto>

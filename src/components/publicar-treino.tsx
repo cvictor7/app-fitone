@@ -25,6 +25,7 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
   const [foto, setFoto] = useState<string | null>(null); // arquivo local escolhido (ainda não enviado)
   const [fotoNoAr, setFotoNoAr] = useState<string | null>(null); // link da foto já publicada
   const [mexendoFoto, setMexendoFoto] = useState(false);
+  const [mostrarTempo, setMostrarTempo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
 
   async function carregar() {
@@ -67,7 +68,7 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
     setErro(null);
     setEstado('enviando');
     try {
-      await publicarTreino(sessaoId, rotulo, legendaEnvio);
+      await publicarTreino(sessaoId, rotulo, legendaEnvio, !mostrarTempo);
       const p = await publicacaoDaSessao(sessaoId);
       if (p && foto && sessao?.user.id) {
         try {
@@ -213,6 +214,16 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
         multiline
         style={{ minHeight: 56, paddingTop: 14, fontSize: 16 }}
       />
+      <Pressable onPress={() => setMostrarTempo((m) => !m)} style={estilos.opcaoTempo} hitSlop={6}>
+        <View style={[estilos.caixinha, mostrarTempo && { backgroundColor: Cores.verde, borderColor: Cores.verde }]}>
+          {mostrarTempo ? (
+            <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+              ✓
+            </Texto>
+          ) : null}
+        </View>
+        <Texto variante="corpo">Mostrar meu tempo</Texto>
+      </Pressable>
       {erro ? (
         <Texto variante="legenda" cor={Cores.perigo}>
           {erro}
@@ -232,6 +243,8 @@ const estilos = StyleSheet.create({
     padding: Espaco.md,
     gap: Espaco.sm,
   },
+  opcaoTempo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, minHeight: 40 },
+  caixinha: { width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: Cores.borda, alignItems: 'center', justifyContent: 'center' },
   foto: { width: '100%', aspectRatio: 4 / 5, borderRadius: Raio.md, backgroundColor: Cores.superficieAlta },
   tirarFoto: {
     position: 'absolute',
