@@ -51,6 +51,13 @@
           "photosPermission": "O Fit One usa suas fotos só quando você escolhe uma para o card do treino ou para a publicação na comunidade.",
           "cameraPermission": "O Fit One usa a câmera só quando você tira uma foto para a publicação na comunidade."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "O Fit One usa a câmera para ler o QR de check-in da academia e para fotos que você escolher publicar.",
+          "recordAudioAndroid": false
+        }
       ]
     ],
     "experiments": {

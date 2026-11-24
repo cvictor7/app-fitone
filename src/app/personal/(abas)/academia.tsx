@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/avatar";
 import { Botao } from "@/components/botao";
+import { CheckinAdmin } from "@/components/checkin-admin";
 import { Campo } from "@/components/campo";
 import { FolhaOpcoes, type ConteudoFolha } from "@/components/folha-opcoes";
 import { Texto } from "@/components/texto";
@@ -408,6 +409,8 @@ export default function PainelAcademia() {
             </View>
           </>
         )}
+
+        {gymId ? <CheckinAdmin gymId={gymId} /> : null}
 
         <View style={estilos.bloco}>
           <Texto variante="rotulo">NOVO AVISO PARA TODOS</Texto>
