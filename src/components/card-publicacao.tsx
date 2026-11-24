@@ -1,5 +1,5 @@
 import * as Haptics from 'expo-haptics';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/avatar';
 import { IconeBalao, IconeFogo } from '@/components/icones';
@@ -53,6 +53,8 @@ export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar, podeRemover
           </Texto>
         </View>
       </View>
+
+      {p.fotoUrl ? <Image source={{ uri: p.fotoUrl }} style={estilos.foto} resizeMode="cover" accessibilityLabel="Foto do treino" /> : null}
 
       <Texto variante="display" cor={info.cor} numberOfLines={1} adjustsFontSizeToFit style={estilos.rotulo}>
         {p.rotulo}
@@ -114,6 +116,7 @@ const estilos = StyleSheet.create({
   },
   topo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm },
   rotulo: { fontSize: 56, lineHeight: 58 },
+  foto: { width: '100%', aspectRatio: 4 / 5, borderRadius: Raio.md, backgroundColor: Cores.superficieAlta },
   numeros: { flexDirection: 'row', gap: Espaco.lg },
   rodape: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md, marginTop: Espaco.xs },
   boa: {

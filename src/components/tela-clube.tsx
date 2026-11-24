@@ -229,7 +229,7 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
 
   async function aoRemover(p: Publicacao) {
     try {
-      await removerPublicacao(p.id);
+      await removerPublicacao(p.id, p.fotoPath);
       setFeed((l) => l.filter((x) => x.id !== p.id));
     } catch {
       setErro('Não deu para tirar agora.');

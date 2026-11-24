@@ -112,7 +112,7 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
 
   async function aoRemover(p: Publicacao) {
     try {
-      await removerPublicacao(p.id);
+      await removerPublicacao(p.id, p.fotoPath);
       setFeed((l) => l.filter((x) => x.id !== p.id));
       if (gymId) setRanking(await carregarRanking(gymId));
     } catch {

@@ -1,4 +1,5 @@
 import type { Modalidade } from '@/constants/theme';
+import { apagarFoto, linksDasFotos } from '@/lib/fotos';
 import { supabase } from '@/lib/supabase';
 
 // Comunidade da academia: feed de treinos publicados, "Boa!" e ranking da semana.
@@ -22,11 +23,13 @@ export type Publicacao = {
   curtidas: number;
   euCurti: boolean;
   comentarios: number;
+  fotoPath: string | null;
+  fotoUrl: string | null; // link temporário (bucket privado)
 };
 
 export type LinhaRanking = { autorId: string; autor: string; eu: boolean; treinos: number; minutos: number };
 
-function converter(r: any): Publicacao {
+export function converter(r: any): Publicacao {
   return {
     id: r.id,
     autorId: r.autor_id,
@@ -45,7 +48,16 @@ function converter(r: any): Publicacao {
     curtidas: Number(r.curtidas ?? 0),
     euCurti: !!r.eu_curti,
     comentarios: Number(r.comentarios ?? 0),
+    fotoPath: r.foto_path ?? null,
+    fotoUrl: null,
   };
+}
+
+/** Coloca o link temporário de cada foto (uma chamada para a lista toda). */
+export async function comFotos(lista: Publicacao[]): Promise<Publicacao[]> {
+  if (!lista.some((p) => p.fotoPath)) return lista;
+  const links = await linksDasFotos(lista.map((p) => p.fotoPath)).catch(() => ({}) as Record<string, string>);
+  return lista.map((p) => (p.fotoPath ? { ...p, fotoUrl: links[p.fotoPath] ?? null } : p));
 }
 
 export const POR_PAGINA = 20;
@@ -57,7 +69,7 @@ export async function carregarFeed(gymId: string, antes?: Date): Promise<Publica
     p_limite: POR_PAGINA,
   });
   if (error) throw error;
-  return ((data ?? []) as any[]).map(converter);
+  return comFotos(((data ?? []) as any[]).map(converter));
 }
 
 export async function carregarRanking(gymId: string): Promise<LinhaRanking[]> {
@@ -81,15 +93,18 @@ export async function publicarTreino(sessaoId: string, rotulo: string, legenda: 
   if (error) throw error;
 }
 
-export async function removerPublicacao(id: string) {
+export async function removerPublicacao(id: string, fotoPath?: string | null) {
   const { error } = await supabase.from('publicacoes').delete().eq('id', id);
   if (error) throw error;
+  await apagarFoto(fotoPath).catch(() => {}); // a foto sai junto
 }
 
-/** Já publiquei este treino? Devolve o id da publicação e a legenda. */
-export async function publicacaoDaSessao(sessaoId: string): Promise<{ id: string; legenda: string | null } | null> {
-  const { data } = await supabase.from('publicacoes').select('id, legenda').eq('sessao_id', sessaoId).maybeSingle();
-  return data ? { id: data.id, legenda: data.legenda } : null;
+/** Já publiquei este treino? Devolve o id da publicação, a legenda e a foto (se tiver). */
+export async function publicacaoDaSessao(
+  sessaoId: string,
+): Promise<{ id: string; legenda: string | null; gymId: string; fotoPath: string | null } | null> {
+  const { data } = await supabase.from('publicacoes').select('id, legenda, gym_id, foto_path').eq('sessao_id', sessaoId).maybeSingle();
+  return data ? { id: data.id, legenda: data.legenda, gymId: data.gym_id, fotoPath: data.foto_path ?? null } : null;
 }
 
 export async function curtir(publicacaoId: string, sim: boolean) {
@@ -113,7 +128,7 @@ export async function carregarPublicacao(id: string): Promise<Publicacao | null>
   const { data, error } = await supabase.rpc('publicacao_comunidade', { p_id: id });
   if (error) throw error;
   const r = ((data ?? []) as any[])[0];
-  return r ? converter(r) : null;
+  return r ? (await comFotos([converter(r)]))[0] : null;
 }
 
 export async function listarComentarios(publicacaoId: string): Promise<Comentario[]> {

@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { POR_PAGINA, type Publicacao } from '@/lib/comunidade';
+import { POR_PAGINA, comFotos, converter, type Publicacao } from '@/lib/comunidade';
 
 // Clubes: grupos dentro da comunidade da academia ("Turma das 6h", "Hybrid de quinta"...).
 // Aberto: qualquer um da Fit One entra. Fechado: só com o código de 6 letras.
@@ -101,25 +101,7 @@ export async function feedDoClube(clubeId: string, antes?: Date): Promise<Public
     p_limite: POR_PAGINA,
   });
   if (error) throw error;
-  return ((data ?? []) as any[]).map((r) => ({
-    id: r.id,
-    autorId: r.autor_id,
-    autor: r.autor,
-    eu: !!r.eu,
-    criadoEm: new Date(r.criado_em),
-    legenda: r.legenda,
-    modalidade: r.modalidade,
-    rotulo: r.rotulo,
-    concluidaEm: new Date(r.concluida_em),
-    duracaoS: r.duracao_s,
-    volumeKg: Number(r.volume_kg ?? 0),
-    series: Number(r.series ?? 0),
-    recordes: Number(r.recordes ?? 0),
-    resumo: r.resumo,
-    curtidas: Number(r.curtidas ?? 0),
-    euCurti: !!r.eu_curti,
-    comentarios: Number(r.comentarios ?? 0),
-  }));
+  return comFotos(((data ?? []) as any[]).map(converter));
 }
 
 export function traduzirErroClube(msg: string) {

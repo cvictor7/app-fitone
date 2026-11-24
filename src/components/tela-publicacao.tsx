@@ -105,7 +105,7 @@ export function TelaPublicacao({ id }: { id: string }) {
 
   async function aoRemover(x: Publicacao) {
     try {
-      await removerPublicacao(x.id);
+      await removerPublicacao(x.id, x.fotoPath);
       router.back();
     } catch {
       setErro('Não deu para tirar agora.');

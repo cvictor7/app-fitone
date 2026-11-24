@@ -8,6 +8,7 @@ import { Botao } from '@/components/botao';
 import { Campo } from '@/components/campo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
+import { apagarMinhasFotos } from '@/lib/fotos';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 import { apagarTreinoAtivo } from '@/lib/treino-ativo';
@@ -16,7 +17,7 @@ import { apagarTreinoAtivo } from '@/lib/treino-ativo';
 // Para não apagar sem querer, a pessoa digita EXCLUIR.
 
 export default function ExcluirConta() {
-  const { papel, sair } = useSessao();
+  const { papel, sair, gymId, sessao } = useSessao();
   const [texto, setTexto] = useState('');
   const [apagando, setApagando] = useState(false);
   const ehPersonal = papel === 'personal' || papel === 'admin';
@@ -24,6 +25,8 @@ export default function ExcluirConta() {
 
   async function excluir() {
     setApagando(true);
+    // as fotos ficam no armazenamento (fora do banco): apaga antes da conta
+    if (gymId && sessao?.user.id) await apagarMinhasFotos(gymId, sessao.user.id).catch(() => {});
     const { error } = await supabase.rpc('excluir_minha_conta');
     if (error) {
       setApagando(false);

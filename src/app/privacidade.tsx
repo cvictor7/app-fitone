@@ -14,12 +14,12 @@ const SECOES = [
   {
     titulo: 'O que o app guarda',
     texto:
-      'Seu nome, e-mail, os treinos que você faz (exercícios, séries, cargas, repetições, duração e como foi), seus recordes, as mensagens com seu personal e o que você publicar na comunidade. O app não pede nem guarda peso corporal, medidas, altura ou data de nascimento.',
+      'Seu nome, e-mail, os treinos que você faz (exercícios, séries, cargas, repetições, duração e como foi), seus recordes, as mensagens com seu personal e nos clubes, o que você publicar na comunidade (texto e, se você escolher, foto) e, na corrida/bike com GPS, o percurso. O app não pede nem guarda peso corporal, medidas, altura ou data de nascimento.',
   },
   {
     titulo: 'Quem vê',
     texto:
-      'Você vê tudo seu. Seu personal vê o plano que ele montou e, só se você autorizar, os treinos que você fez. As mensagens do chat só você e seu personal leem. Na comunidade, só os treinos que você escolher publicar aparecem, para membros da Fit One, com seu nome abreviado (ex.: "Carlos V."). Nos desafios, só quem entrou aparece na classificação. O dono da academia vê só números gerais, nunca o seu treino. Ninguém de fora da academia vê seus dados.',
+      'Você vê tudo seu. Seu personal vê o plano que ele montou e, só se você autorizar, os treinos que você fez. As mensagens do chat só você e seu personal leem. Na comunidade, só os treinos que você escolher publicar aparecem, para membros da Fit One, com seu nome abreviado (ex.: "Carlos V."). Nos desafios, só quem entrou aparece na classificação. O dono da academia vê só números gerais, nunca o seu treino. O mapa do seu percurso (GPS) só você vê; os outros veem só km e ritmo. As fotos publicadas ficam guardadas de forma privada: só membros da Fit One conseguem abrir. Ninguém de fora da academia vê seus dados.',
   },
   {
     titulo: 'Para que',
@@ -33,7 +33,7 @@ const SECOES = [
   {
     titulo: 'Seus direitos (LGPD)',
     texto:
-      'Você pode ver, corrigir e apagar seus dados: tirar a permissão do personal aqui nesta tela, tirar um treino da comunidade, sair de um desafio e excluir a conta em Perfil → Excluir minha conta. Excluir a conta apaga na hora seus treinos, mensagens, publicações e seu perfil.',
+      'Você pode ver, corrigir e apagar seus dados: tirar a permissão do personal aqui nesta tela, tirar um treino da comunidade, sair de um desafio e excluir a conta em Perfil → Excluir minha conta. Excluir a conta apaga na hora seus treinos, percursos, fotos, mensagens, publicações e seu perfil.',
   },
 ];
 
