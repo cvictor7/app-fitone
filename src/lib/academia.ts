@@ -115,7 +115,7 @@ export async function listarMembros(gymId: string): Promise<Membro[]> {
   }));
 }
 
-export async function definirPapel(gymId: string, userId: string, papel: 'aluno' | 'personal') {
+export async function definirPapel(gymId: string, userId: string, papel: 'aluno' | 'personal' | 'admin') {
   const { error } = await supabase.rpc('definir_papel', { p_gym: gymId, p_user: userId, p_papel: papel });
   if (error) throw error;
 }

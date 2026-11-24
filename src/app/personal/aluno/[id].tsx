@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/avatar';
 import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
+import { FolhaOpcoes, type ConteudoFolha } from '@/components/folha-opcoes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Modalidades, Raio, type Modalidade, infoModalidade } from '@/constants/theme';
 import { textoQuando } from '@/lib/dados';
@@ -76,6 +77,8 @@ export default function FichaAluno() {
     }, [carregar]),
   );
 
+  const [folha, setFolha] = useState<ConteudoFolha>(null);
+
   async function escolherModelo() {
     try {
       const modelos = await listarModelos();
@@ -83,10 +86,12 @@ export default function FichaAluno() {
         Alert.alert('Nenhum modelo ainda', 'Crie modelos na aba Modelos para montar planos em 1 minuto.');
         return;
       }
-      Alert.alert('Usar qual modelo?', 'O plano ativo atual fica guardado no histórico.', [
-        ...modelos.slice(0, 6).map((m) => ({
-          text: `${m.nome} (${m.letras.join('')})`,
-          onPress: async () => {
+      setFolha({
+        titulo: 'Usar qual modelo?',
+        subtitulo: 'O plano ativo atual fica guardado no histórico.',
+        opcoes: modelos.map((m) => ({
+          texto: `${m.nome} (${m.letras.join('')})`,
+          aoTocar: async () => {
             try {
               const novo = await usarModeloEmAluno(m.id, id);
               router.push(`/personal/plano/${novo}`);
@@ -95,8 +100,7 @@ export default function FichaAluno() {
             }
           },
         })),
-        { text: 'Cancelar', style: 'cancel' as const },
-      ]);
+      });
     } catch (e: any) {
       Alert.alert('Não deu certo', e.message);
     }
@@ -241,6 +245,7 @@ export default function FichaAluno() {
           </View>
         ) : null}
       </ScrollView>
+      <FolhaOpcoes conteudo={folha} aoFechar={() => setFolha(null)} />
     </SafeAreaView>
   );
 }

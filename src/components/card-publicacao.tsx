@@ -15,9 +15,10 @@ type Props = {
   aoCurtir: (p: Publicacao) => void;
   aoRemover: (p: Publicacao) => void;
   aoComentar?: (p: Publicacao) => void; // sem isso (tela do próprio post), o botão some
+  podeRemover?: boolean; // padrão: só o autor; o admin também pode (moderação)
 };
 
-export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar }: Props) {
+export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar, podeRemover }: Props) {
   const info = infoModalidade(p.modalidade);
   const musculacao = p.modalidade === 'musculacao';
 
@@ -28,9 +29,11 @@ export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar }: Props) {
   if (p.recordes > 0) numeros.push([String(p.recordes), p.recordes === 1 ? 'recorde' : 'recordes']);
 
   function segurar() {
-    if (!p.eu) return;
+    if (!(podeRemover ?? p.eu)) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert('Tirar da comunidade?', 'O treino continua no seu histórico. Só sai do feed.', [
+    const titulo = p.eu ? 'Tirar da comunidade?' : `Apagar a publicação de ${p.autor}?`;
+    const texto = p.eu ? 'O treino continua no seu histórico. Só sai do feed.' : 'Moderação: sai do feed para todos. O treino continua no histórico do aluno.';
+    Alert.alert(titulo, texto, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Tirar', style: 'destructive', onPress: () => aoRemover(p) },
     ]);

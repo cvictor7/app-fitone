@@ -4,6 +4,7 @@ import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleS
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
+import { FolhaOpcoes, type ConteudoFolha } from '@/components/folha-opcoes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import { listarAlunos, listarModelos, usarModeloEmAluno } from '@/lib/personal';
@@ -29,17 +30,20 @@ export default function Modelos() {
     }, [carregar]),
   );
 
+  const [folha, setFolha] = useState<ConteudoFolha>(null);
+
   async function usar(m: Modelo) {
     const alunos = await listarAlunos();
     if (alunos.length === 0) {
       Alert.alert('Nenhum aluno ainda', 'Convide um aluno na aba Alunos.');
       return;
     }
-    // Lista curta no próprio alerta; com muitos alunos, o caminho é pela ficha do aluno
-    Alert.alert(`Usar "${m.nome}" em qual aluno?`, 'O plano ativo dele fica guardado no histórico.', [
-      ...alunos.slice(0, 7).map((a) => ({
-        text: a.nome,
-        onPress: async () => {
+    setFolha({
+      titulo: `Usar "${m.nome}" em qual aluno?`,
+      subtitulo: 'O plano ativo dele fica guardado no histórico.',
+      opcoes: alunos.map((a) => ({
+        texto: a.nome,
+        aoTocar: async () => {
           try {
             const novo = await usarModeloEmAluno(m.id, a.id);
             router.push(`/personal/plano/${novo}`);
@@ -48,8 +52,7 @@ export default function Modelos() {
           }
         },
       })),
-      { text: 'Cancelar', style: 'cancel' as const },
-    ]);
+    });
   }
 
   return (
@@ -94,6 +97,7 @@ export default function Modelos() {
           ))
         )}
       </ScrollView>
+      <FolhaOpcoes conteudo={folha} aoFechar={() => setFolha(null)} />
     </SafeAreaView>
   );
 }
