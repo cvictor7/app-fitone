@@ -22,18 +22,32 @@ export function CardClube({ c, onPress }: { c: Clube; onPress: () => void }) {
           {c.nome}
           {c.fechado ? '  🔒' : ''}
         </Texto>
-        <Texto variante="legenda" numberOfLines={1}>
-          {c.membros} {c.membros === 1 ? 'membro' : 'membros'} · {c.treinosSemana} {c.treinosSemana === 1 ? 'treino' : 'treinos'} na semana
-        </Texto>
-        {c.descricao ? (
+        {c.souMembro && c.ultima ? (
+          <Texto variante="legenda" cor={c.naoLidas > 0 ? Cores.texto : Cores.textoSecundario} numberOfLines={1}>
+            {c.ultima}
+          </Texto>
+        ) : (
+          <Texto variante="legenda" numberOfLines={1}>
+            {c.membros} {c.membros === 1 ? 'membro' : 'membros'} · {c.treinosSemana} {c.treinosSemana === 1 ? 'treino' : 'treinos'} na semana
+          </Texto>
+        )}
+        {!c.souMembro && c.descricao ? (
           <Texto variante="legenda" cor={Cores.textoApagado} numberOfLines={1}>
             {c.descricao}
           </Texto>
         ) : null}
       </View>
-      <Texto variante="rotulo" cor={c.souMembro ? Cores.verde : Cores.textoSecundario}>
-        {c.souDono ? 'DONO' : c.souMembro ? 'MEMBRO' : 'VER ›'}
-      </Texto>
+      {c.naoLidas > 0 ? (
+        <View style={estilos.contador}>
+          <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+            {c.naoLidas > 99 ? '99+' : c.naoLidas}
+          </Texto>
+        </View>
+      ) : (
+        <Texto variante="rotulo" cor={c.souMembro ? Cores.verde : Cores.textoSecundario}>
+          {c.souDono ? 'DONO' : c.souMembro ? 'MEMBRO' : 'VER ›'}
+        </Texto>
+      )}
     </Pressable>
   );
 }
@@ -123,5 +137,14 @@ const estilos = StyleSheet.create({
     padding: Espaco.md,
   },
   inicial: { width: 48, height: 48, borderRadius: Raio.md, backgroundColor: Cores.verde, alignItems: 'center', justifyContent: 'center' },
+  contador: {
+    minWidth: 26,
+    height: 26,
+    borderRadius: 13,
+    paddingHorizontal: 6,
+    backgroundColor: Cores.verde,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   entrar: { minHeight: 52, paddingHorizontal: Espaco.lg, borderRadius: Raio.md, backgroundColor: Cores.verde, justifyContent: 'center' },
 });

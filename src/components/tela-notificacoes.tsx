@@ -31,8 +31,9 @@ export function TelaNotificacoes({ lado }: { lado: 'aluno' | 'personal' }) {
   );
 
   const abrir = (n: Notificacao) => {
-    if (!n.publicacaoId) return;
-    router.push((lado === 'personal' ? `/personal/publicacao/${n.publicacaoId}` : `/publicacao/${n.publicacaoId}`) as any);
+    const base = lado === 'personal' ? '/personal' : '';
+    if (n.clubeId) router.push(`${base}/clube/${n.clubeId}` as any);
+    else if (n.publicacaoId) router.push(`${base}/publicacao/${n.publicacaoId}` as any);
   };
 
   return (

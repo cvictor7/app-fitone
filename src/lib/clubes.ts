@@ -14,6 +14,11 @@ export type Clube = {
   souDono: boolean;
   codigo: string | null; // só quem está no clube vê
   treinosSemana: number;
+  souAdmin: boolean; // dono, admin do clube ou admin da academia
+  soAdminsEnviam: boolean; // clube de avisos: só admin manda mensagem
+  naoLidas: number;
+  ultima: string | null; // "Bruno C.: texto da última mensagem"
+  ultimaEm: Date | null;
 };
 
 export type MembroClube = { userId: string; autor: string; eu: boolean; dono: boolean; treinos: number; minutos: number };
@@ -31,6 +36,11 @@ export async function listarClubes(gymId: string): Promise<Clube[]> {
     souDono: !!c.sou_dono,
     codigo: c.codigo,
     treinosSemana: Number(c.treinos_semana ?? 0),
+    souAdmin: !!c.sou_admin,
+    soAdminsEnviam: !!c.so_admins_enviam,
+    naoLidas: Number(c.nao_lidas ?? 0),
+    ultima: c.ultima,
+    ultimaEm: c.ultima_em ? new Date(c.ultima_em) : null,
   }));
 }
 
@@ -117,4 +127,90 @@ export function traduzirErroClube(msg: string) {
   if (msg.includes('não encontrado')) return 'Código não encontrado. Confira as 6 letras.';
   if (msg.includes('5 clubes')) return 'Você já é dono de 5 clubes.';
   return 'Não deu certo agora. Tente de novo.';
+}
+
+// ---------- conversa do clube ----------
+
+export type MensagemClube = {
+  id: string;
+  autorId: string;
+  autor: string;
+  eu: boolean;
+  autorAdmin: boolean;
+  texto: string;
+  criadoEm: Date;
+  fixada: boolean;
+};
+
+export type PessoaClube = { userId: string; autor: string; eu: boolean; dono: boolean; admin: boolean };
+
+function converterMsg(m: any): MensagemClube {
+  return {
+    id: m.id,
+    autorId: m.autor_id,
+    autor: m.autor,
+    eu: !!m.eu,
+    autorAdmin: !!m.autor_admin,
+    texto: m.texto,
+    criadoEm: new Date(m.criado_em),
+    fixada: !!m.fixada,
+  };
+}
+
+/** Últimas mensagens, das mais antigas para as mais novas. */
+export async function mensagensDoClube(clubeId: string): Promise<MensagemClube[]> {
+  const { data, error } = await supabase.rpc('mensagens_clube', { p_clube: clubeId, p_antes: null, p_limite: 100 });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map(converterMsg).reverse();
+}
+
+export async function enviarNoClube(clubeId: string, texto: string) {
+  const { error } = await supabase.from('clube_mensagens').insert({ clube_id: clubeId, texto: texto.trim() });
+  if (error) throw error;
+}
+
+export async function apagarMensagemClube(id: string) {
+  const { error } = await supabase.from('clube_mensagens').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function fixarMensagem(id: string, fixar: boolean) {
+  const { error } = await supabase.rpc('fixar_mensagem', { p_mensagem: id, p_fixar: fixar });
+  if (error) throw error;
+}
+
+export async function marcarClubeLido(clubeId: string) {
+  await supabase.rpc('marcar_clube_lido', { p_clube: clubeId });
+}
+
+export async function pessoasDoClube(clubeId: string): Promise<PessoaClube[]> {
+  const { data, error } = await supabase.rpc('membros_clube', { p_clube: clubeId });
+  if (error) throw error;
+  return ((data ?? []) as any[]).map((m) => ({ userId: m.user_id, autor: m.autor, eu: !!m.eu, dono: !!m.dono, admin: !!m.admin }));
+}
+
+export async function definirAdminClube(clubeId: string, userId: string, admin: boolean) {
+  const { error } = await supabase.rpc('definir_admin_clube', { p_clube: clubeId, p_user: userId, p_admin: admin });
+  if (error) throw error;
+}
+
+export async function removerDoClube(clubeId: string, userId: string) {
+  const { error } = await supabase.rpc('remover_do_clube', { p_clube: clubeId, p_user: userId });
+  if (error) throw error;
+}
+
+export async function clubeSoAdmins(clubeId: string, sim: boolean) {
+  const { error } = await supabase.rpc('clube_so_admins', { p_clube: clubeId, p_sim: sim });
+  if (error) throw error;
+}
+
+/** Avisa quando entra mensagem nova no clube (Realtime). Devolve a função que desliga. */
+export function ouvirClube(clubeId: string, aoMudar: () => void) {
+  const canal = supabase
+    .channel(`clube-${clubeId}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'clube_mensagens', filter: `clube_id=eq.${clubeId}` }, () => aoMudar())
+    .subscribe();
+  return () => {
+    supabase.removeChannel(canal);
+  };
 }

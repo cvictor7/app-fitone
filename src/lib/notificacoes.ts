@@ -11,6 +11,8 @@ export type Notificacao = {
   trecho: string;
   criadoEm: Date;
   lida: boolean;
+  clubeId: string | null;
+  clube: string | null;
 };
 
 export async function listarNotificacoes(): Promise<Notificacao[]> {
@@ -25,6 +27,8 @@ export async function listarNotificacoes(): Promise<Notificacao[]> {
     trecho: n.trecho ?? '',
     criadoEm: new Date(n.criado_em),
     lida: !!n.lida,
+    clubeId: n.clube_id ?? null,
+    clube: n.clube ?? null,
   }));
 }
 
@@ -42,5 +46,5 @@ export function textoNotificacao(n: Notificacao) {
   const treino = n.rotulo ? ` (${n.rotulo})` : '';
   if (n.tipo === 'curtida') return `mandou Boa! no seu treino${treino}`;
   if (n.tipo === 'comentario') return `comentou no seu treino${treino}`;
-  return 'mencionou você';
+  return n.clube ? `mencionou você no clube ${n.clube}` : 'mencionou você';
 }

@@ -9,27 +9,36 @@ import { BarraTopo } from '@/components/barra-topo';
 import { Botao } from '@/components/botao';
 import { Campo } from '@/components/campo';
 import { CardPublicacao } from '@/components/card-publicacao';
+import { ChatClube } from '@/components/chat-clube';
+import { FolhaOpcoes, type ConteudoFolha } from '@/components/folha-opcoes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import {
   apagarClube,
+  clubeSoAdmins,
   criarClube,
+  definirAdminClube,
   entrarNoClube,
   feedDoClube,
   listarClubes,
   membrosDoClube,
+  pessoasDoClube,
+  removerDoClube,
   sairDoClube,
   traduzirErroClube,
   type Clube,
   type MembroClube,
+  type PessoaClube,
 } from '@/lib/clubes';
 import { curtir, removerPublicacao, type Publicacao } from '@/lib/comunidade';
 import { useSessao } from '@/lib/sessao';
 
-// Um clube: feed dos membros, ranking da semana, convidar com código, entrar/sair.
+// Um clube (grupo dentro da comunidade): Conversa (jeito WhatsApp, com fixadas e admins),
+// Treinos (feed dos membros) e Membros (ranking da semana + admins + ajustes).
 // Com id "novo", vira o formulário de criar clube. Serve ao aluno e ao personal/admin.
 
 type Lado = 'aluno' | 'personal';
+type Aba = 'conversa' | 'treinos' | 'membros';
 
 export function TelaClube({ id, lado }: { id: string; lado: Lado }) {
   if (id === 'novo') return <CriarClube lado={lado} />;
@@ -106,19 +115,24 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
   const { gymId, papel } = useSessao();
   const [clube, setClube] = useState<Clube | null | undefined>(undefined);
   const [feed, setFeed] = useState<Publicacao[]>([]);
-  const [membros, setMembros] = useState<MembroClube[]>([]);
-  const [aba, setAba] = useState<'feed' | 'ranking'>('feed');
+  const [ranking, setRanking] = useState<MembroClube[]>([]);
+  const [pessoas, setPessoas] = useState<PessoaClube[]>([]);
+  const [aba, setAba] = useState<Aba | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [mexendo, setMexendo] = useState(false);
-  const admin = papel === 'admin';
+  const [folha, setFolha] = useState<ConteudoFolha>(null);
+  const adminAcademia = papel === 'admin';
 
   const carregar = useCallback(async () => {
     if (!gymId) return;
     try {
-      const [lista, f, m] = await Promise.all([listarClubes(gymId), feedDoClube(id), membrosDoClube(id)]);
-      setClube(lista.find((c) => c.id === id) ?? null);
+      const [lista, f, r, p] = await Promise.all([listarClubes(gymId), feedDoClube(id), membrosDoClube(id), pessoasDoClube(id)]);
+      const c = lista.find((x) => x.id === id) ?? null;
+      setClube(c);
       setFeed(f);
-      setMembros(m);
+      setRanking(r);
+      setPessoas(p);
+      setAba((atual) => atual ?? (c?.souMembro ? 'conversa' : 'treinos'));
     } catch {
       setClube((atual) => atual ?? null);
     }
@@ -134,6 +148,7 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
     try {
       await entrarNoClube(id);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAba('conversa');
       await carregar();
     } catch (e: any) {
       setErro(traduzirErroClube(String(e?.message ?? '')));
@@ -144,10 +159,10 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
 
   function sairOuApagar() {
     if (!clube) return;
-    const apagar = clube.souDono || admin;
+    const apagar = clube.souDono || adminAcademia;
     Alert.alert(
       apagar ? `Apagar o clube "${clube.nome}"?` : `Sair do clube "${clube.nome}"?`,
-      apagar ? 'O clube some para todos. Os treinos de cada um continuam no feed geral.' : 'Você pode entrar de novo depois.',
+      apagar ? 'O clube e a conversa somem para todos. Os treinos de cada um continuam no feed geral.' : 'Você pode entrar de novo depois.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -172,6 +187,32 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
     Share.share({
       message: `Entra no clube "${clube.nome}" no app da Fit One! Em Comunidade → Clubes, digite o código ${clube.codigo}`,
     });
+  }
+
+  async function trocarSoAdmins(sim: boolean) {
+    if (!clube) return;
+    setClube({ ...clube, soAdminsEnviam: sim });
+    try {
+      await clubeSoAdmins(id, sim);
+    } catch {
+      setClube({ ...clube, soAdminsEnviam: !sim });
+    }
+  }
+
+  function opcoesMembro(m: PessoaClube) {
+    if (!clube || m.eu || m.dono || !clube.souAdmin) return;
+    const ops = [];
+    if (clube.souDono || adminAcademia)
+      ops.push({
+        texto: m.admin ? 'Tirar de admin do clube' : 'Tornar admin do clube',
+        aoTocar: () => definirAdminClube(id, m.userId, !m.admin).then(carregar).catch(() => setErro('Não deu certo.')),
+      });
+    ops.push({
+      texto: 'Tirar do clube',
+      destrutivo: true,
+      aoTocar: () => removerDoClube(id, m.userId).then(carregar).catch(() => setErro('Não deu certo.')),
+    });
+    setFolha({ titulo: m.autor, subtitulo: m.admin ? 'Admin do clube' : 'Membro', opcoes: ops });
   }
 
   async function aoCurtir(p: Publicacao) {
@@ -215,107 +256,162 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
   }
 
   const rotaPublicacao = (pid: string) => (lado === 'personal' ? `/personal/publicacao/${pid}` : `/publicacao/${pid}`) as any;
+  const adminDe = new Map(pessoas.map((p) => [p.userId, p]));
 
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <BarraTopo titulo="Clube" />
-      <ScrollView
-        contentContainerStyle={estilos.conteudo}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={carregar} tintColor={Cores.verde} />}>
-        <View style={estilos.cabecalho}>
-          <View style={estilos.inicial}>
-            <Texto variante="display" cor={Cores.preto} style={{ fontSize: 40, lineHeight: 42 }}>
-              {clube.nome.trim()[0]?.toUpperCase()}
-            </Texto>
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Texto variante="titulo" numberOfLines={2} style={{ fontSize: 30, lineHeight: 32 }}>
-              {clube.nome}
-            </Texto>
-            <Texto variante="legenda">
-              {clube.fechado ? '🔒 Fechado' : 'Aberto'} · {clube.membros} {clube.membros === 1 ? 'membro' : 'membros'}
-            </Texto>
-          </View>
-        </View>
-        {clube.descricao ? <Texto variante="corpo">{clube.descricao}</Texto> : null}
+      <BarraTopo titulo={clube.nome} />
 
-        {clube.souMembro && clube.codigo ? (
-          <Pressable onPress={convidar} style={estilos.codigo}>
-            <View style={{ flex: 1 }}>
-              <Texto variante="rotulo">CÓDIGO PARA CONVIDAR</Texto>
-              <Texto variante="display" cor={Cores.verde} style={{ fontSize: 34, lineHeight: 36, letterSpacing: 2 }}>
-                {clube.codigo}
-              </Texto>
-            </View>
-            <Texto variante="corpo" style={{ fontFamily: 'Archivo_700Bold' }}>
-              Convidar ›
-            </Texto>
-          </Pressable>
-        ) : null}
-
-        {!clube.souMembro ? <Botao titulo={mexendo ? '...' : 'Entrar no clube'} disabled={mexendo} onPress={entrar} /> : null}
-        {erro ? (
-          <Texto variante="corpo" cor={Cores.perigo}>
-            {erro}
+      <View style={estilos.topo}>
+        <View style={estilos.inicial}>
+          <Texto variante="display" cor={Cores.preto} style={{ fontSize: 24, lineHeight: 26 }}>
+            {clube.nome.trim()[0]?.toUpperCase()}
           </Texto>
-        ) : null}
-
-        <View style={estilos.seletor}>
-          {(['feed', 'ranking'] as const).map((a) => (
-            <Pressable key={a} onPress={() => setAba(a)} style={[estilos.opcao, aba === a && { backgroundColor: Cores.verde }]}>
-              <Texto variante="corpo" cor={aba === a ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: 'Archivo_600SemiBold' }}>
-                {a === 'feed' ? 'Treinos' : 'Ranking da semana'}
-              </Texto>
-            </Pressable>
-          ))}
         </View>
-
-        {aba === 'feed' ? (
-          feed.length === 0 ? (
-            <Texto variante="corpo" cor={Cores.textoSecundario}>
-              Quando alguém do clube publicar um treino, ele aparece aqui.
-            </Texto>
-          ) : (
-            feed.map((p) => (
-              <CardPublicacao
-                key={p.id}
-                p={p}
-                aoCurtir={aoCurtir}
-                aoRemover={aoRemover}
-                podeRemover={p.eu || admin}
-                aoComentar={(x) => router.push(rotaPublicacao(x.id))}
-              />
-            ))
-          )
-        ) : (
-          membros.map((m, i) => (
-            <View key={m.userId} style={[estilos.membro, m.eu && { borderColor: Cores.verde }]}>
-              <Texto variante="numero" cor={i < 3 && m.treinos > 0 ? Cores.verde : Cores.textoApagado} style={{ width: 30, fontSize: 24, lineHeight: 26 }}>
-                {i + 1}
-              </Texto>
-              <Avatar nome={m.autor} tamanho={34} />
-              <Texto variante="corpo" style={{ flex: 1, fontFamily: 'Archivo_600SemiBold' }} numberOfLines={1}>
-                {m.eu ? `${m.autor} (você)` : m.autor}
-                {m.dono ? '  ★' : ''}
-              </Texto>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Texto variante="numero" style={{ fontSize: 22, lineHeight: 24 }}>
-                  {m.treinos}
-                </Texto>
-                <Texto variante="legenda">{m.minutos > 0 ? `${m.minutos} min` : m.treinos === 1 ? 'treino' : 'treinos'}</Texto>
-              </View>
-            </View>
-          ))
-        )}
-
-        {clube.souMembro || admin ? (
-          <Pressable onPress={sairOuApagar} style={{ alignSelf: 'center', marginTop: Espaco.lg }} hitSlop={10}>
-            <Texto variante="corpo" cor={Cores.perigo}>
-              {clube.souDono || admin ? 'Apagar clube' : 'Sair do clube'}
+        <Texto variante="legenda" style={{ flex: 1 }} numberOfLines={2}>
+          {clube.fechado ? '🔒 Fechado' : 'Aberto'} · {clube.membros} {clube.membros === 1 ? 'membro' : 'membros'}
+          {clube.soAdminsEnviam ? ' · 📢 só admins enviam' : ''}
+          {clube.descricao ? `\n${clube.descricao}` : ''}
+        </Texto>
+        {clube.souMembro && clube.codigo ? (
+          <Pressable onPress={convidar} style={estilos.convidar} hitSlop={6}>
+            <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+              Convidar
             </Texto>
           </Pressable>
         ) : null}
-      </ScrollView>
+      </View>
+
+      {!clube.souMembro ? (
+        <View style={{ paddingHorizontal: Espaco.lg, paddingBottom: Espaco.sm }}>
+          <Botao titulo={mexendo ? '...' : 'Entrar no clube'} disabled={mexendo} onPress={entrar} />
+        </View>
+      ) : null}
+
+      <View style={estilos.seletor}>
+        {(['conversa', 'treinos', 'membros'] as const).map((a) => (
+          <Pressable key={a} onPress={() => setAba(a)} style={[estilos.opcao, aba === a && { backgroundColor: Cores.verde }]}>
+            <Texto variante="corpo" cor={aba === a ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: 'Archivo_600SemiBold' }}>
+              {a === 'conversa' ? 'Conversa' : a === 'treinos' ? 'Treinos' : 'Membros'}
+            </Texto>
+          </Pressable>
+        ))}
+      </View>
+
+      {erro ? (
+        <Texto variante="legenda" cor={Cores.perigo} style={{ paddingHorizontal: Espaco.lg }}>
+          {erro}
+        </Texto>
+      ) : null}
+
+      {aba === 'conversa' ? (
+        clube.souMembro ? (
+          <ChatClube clube={clube} />
+        ) : (
+          <Texto variante="corpo" cor={Cores.textoSecundario} style={{ padding: Espaco.lg, textAlign: 'center' }}>
+            Entre no clube para ver e participar da conversa.
+          </Texto>
+        )
+      ) : (
+        <ScrollView
+          contentContainerStyle={estilos.conteudo}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={carregar} tintColor={Cores.verde} />}>
+          {aba === 'treinos' ? (
+            feed.length === 0 ? (
+              <Texto variante="corpo" cor={Cores.textoSecundario}>
+                Quando alguém do clube publicar um treino, ele aparece aqui.
+              </Texto>
+            ) : (
+              feed.map((p) => (
+                <CardPublicacao
+                  key={p.id}
+                  p={p}
+                  aoCurtir={aoCurtir}
+                  aoRemover={aoRemover}
+                  podeRemover={p.eu || adminAcademia}
+                  aoComentar={(x) => router.push(rotaPublicacao(x.id))}
+                />
+              ))
+            )
+          ) : (
+            <>
+              {clube.souAdmin ? (
+                <View style={estilos.ajuste}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Texto variante="corpo" style={{ fontFamily: 'Archivo_600SemiBold' }}>
+                      📢 Só admins enviam
+                    </Texto>
+                    <Texto variante="legenda">Para clube de avisos: os outros só leem a conversa.</Texto>
+                  </View>
+                  <Switch
+                    value={clube.soAdminsEnviam}
+                    onValueChange={trocarSoAdmins}
+                    trackColor={{ true: Cores.verde, false: Cores.borda }}
+                    thumbColor={Cores.branco}
+                  />
+                </View>
+              ) : null}
+              <Texto variante="rotulo">RANKING DA SEMANA</Texto>
+              {ranking.map((m, i) => {
+                const info = adminDe.get(m.userId);
+                return (
+                  <Pressable
+                    key={m.userId}
+                    onPress={() => info && opcoesMembro(info)}
+                    style={[estilos.membro, m.eu && { borderColor: Cores.verde }]}>
+                    <Texto
+                      variante="numero"
+                      cor={i < 3 && m.treinos > 0 ? Cores.verde : Cores.textoApagado}
+                      style={{ width: 30, fontSize: 24, lineHeight: 26 }}>
+                      {i + 1}
+                    </Texto>
+                    <Avatar nome={m.autor} tamanho={34} />
+                    <View style={{ flex: 1 }}>
+                      <Texto variante="corpo" style={{ fontFamily: 'Archivo_600SemiBold' }} numberOfLines={1}>
+                        {m.eu ? `${m.autor} (você)` : m.autor}
+                      </Texto>
+                      {m.dono || info?.admin ? (
+                        <Texto variante="legenda" cor={Cores.verde}>
+                          {m.dono ? '★ Dono' : 'Admin'}
+                        </Texto>
+                      ) : null}
+                    </View>
+                    <View style={{ alignItems: 'flex-end' }}>
+                      <Texto variante="numero" style={{ fontSize: 22, lineHeight: 24 }}>
+                        {m.treinos}
+                      </Texto>
+                      <Texto variante="legenda">{m.minutos > 0 ? `${m.minutos} min` : m.treinos === 1 ? 'treino' : 'treinos'}</Texto>
+                    </View>
+                  </Pressable>
+                );
+              })}
+              {clube.souAdmin ? <Texto variante="legenda">Toque em alguém para tornar admin ou tirar do clube.</Texto> : null}
+              {clube.souMembro && clube.codigo ? (
+                <Pressable onPress={convidar} style={estilos.codigo}>
+                  <View style={{ flex: 1 }}>
+                    <Texto variante="rotulo">CÓDIGO PARA CONVIDAR</Texto>
+                    <Texto variante="display" cor={Cores.verde} style={{ fontSize: 30, lineHeight: 32, letterSpacing: 2 }}>
+                      {clube.codigo}
+                    </Texto>
+                  </View>
+                  <Texto variante="corpo" style={{ fontFamily: 'Archivo_700Bold' }}>
+                    Convidar ›
+                  </Texto>
+                </Pressable>
+              ) : null}
+              {clube.souMembro || adminAcademia ? (
+                <Pressable onPress={sairOuApagar} style={{ alignSelf: 'center', marginTop: Espaco.lg }} hitSlop={10}>
+                  <Texto variante="corpo" cor={Cores.perigo}>
+                    {clube.souDono || adminAcademia ? 'Apagar clube' : 'Sair do clube'}
+                  </Texto>
+                </Pressable>
+              ) : null}
+            </>
+          )}
+        </ScrollView>
+      )}
+
+      <FolhaOpcoes conteudo={folha} aoFechar={() => setFolha(null)} />
     </SafeAreaView>
   );
 }
@@ -323,8 +419,9 @@ function VerClube({ id, lado }: { id: string; lado: Lado }) {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { padding: Espaco.lg, gap: Espaco.md, paddingBottom: Espaco.xxl },
-  cabecalho: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md },
-  inicial: { width: 72, height: 72, borderRadius: Raio.lg, backgroundColor: Cores.verde, alignItems: 'center', justifyContent: 'center' },
+  topo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, paddingHorizontal: Espaco.lg, paddingBottom: Espaco.sm },
+  inicial: { width: 44, height: 44, borderRadius: Raio.md, backgroundColor: Cores.verde, alignItems: 'center', justifyContent: 'center' },
+  convidar: { backgroundColor: Cores.verde, borderRadius: Raio.pilula, paddingHorizontal: 12, paddingVertical: 8 },
   codigo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -334,8 +431,8 @@ const estilos = StyleSheet.create({
     borderColor: Cores.verde,
     padding: Espaco.md,
   },
-  seletor: { flexDirection: 'row', backgroundColor: Cores.superficie, borderRadius: Raio.pilula, padding: 4 },
-  opcao: { flex: 1, minHeight: 44, borderRadius: Raio.pilula, alignItems: 'center', justifyContent: 'center' },
+  seletor: { flexDirection: 'row', backgroundColor: Cores.superficie, borderRadius: Raio.pilula, padding: 4, marginHorizontal: Espaco.lg, marginBottom: Espaco.xs },
+  opcao: { flex: 1, minHeight: 40, borderRadius: Raio.pilula, alignItems: 'center', justifyContent: 'center' },
   membro: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -346,6 +443,7 @@ const estilos = StyleSheet.create({
     borderColor: 'transparent',
     padding: Espaco.md,
   },
+  ajuste: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md, backgroundColor: Cores.superficie, borderRadius: Raio.lg, padding: Espaco.md },
   linhaSwitch: {
     flexDirection: 'row',
     alignItems: 'center',
