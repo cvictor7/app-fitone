@@ -20,6 +20,7 @@ import {
   type Publicacao,
 } from '@/lib/comunidade';
 import { listarClubes, type Clube } from '@/lib/clubes';
+import { contarNaoLidas } from '@/lib/notificacoes';
 import { listarDesafios, type Desafio } from '@/lib/desafios';
 import { useSessao } from '@/lib/sessao';
 
@@ -43,6 +44,7 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
   const [ranking, setRanking] = useState<LinhaRanking[]>([]);
   const [desafios, setDesafios] = useState<Desafio[]>([]);
   const [clubes, setClubes] = useState<Clube[]>([]);
+  const [naoLidas, setNaoLidas] = useState(0);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [temMais, setTemMais] = useState(true);
@@ -60,6 +62,7 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
         listarClubes(gymId),
       ]);
       setClubes(c);
+      contarNaoLidas().then(setNaoLidas);
       setFeed(f);
       setRanking(r);
       setDesafios(d);
@@ -133,7 +136,23 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
   const cabecalho = (
     <View style={{ gap: Espaco.md, marginBottom: Espaco.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Espaco.sm }}>
-        <Texto variante="titulo">Comunidade</Texto>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Espaco.sm }}>
+          <Texto variante="titulo">Comunidade</Texto>
+          <Pressable
+            accessibilityLabel="Notificações"
+            onPress={() => router.push((equipe ? '/personal/notificacoes' : '/notificacoes') as any)}
+            hitSlop={10}
+            style={estilos.sino}>
+            <Texto style={{ fontSize: 20 }}>🔔</Texto>
+            {naoLidas > 0 ? (
+              <View style={estilos.contador}>
+                <Texto variante="legenda" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold', fontSize: 11, lineHeight: 14 }}>
+                  {naoLidas > 9 ? '9+' : naoLidas}
+                </Texto>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
         {aba === 'clubes' ? (
           <Pressable onPress={() => router.push(rotaClube('novo'))} style={estilos.publicar} hitSlop={6}>
             <Texto variante="corpo" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
@@ -317,6 +336,19 @@ function LinhaDoRanking({ r, posicao }: { r: LinhaRanking; posicao: number }) {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { padding: Espaco.lg, paddingBottom: Espaco.xxl },
+  sino: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  contador: {
+    position: 'absolute',
+    top: 0,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: Cores.verde,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   publicar: { backgroundColor: Cores.verde, borderRadius: Raio.pilula, paddingHorizontal: 16, minHeight: 40, justifyContent: 'center' },
   seletor: { flexDirection: 'row', backgroundColor: Cores.superficie, borderRadius: Raio.pilula, padding: 4 },
   opcao: { flex: 1, minHeight: 44, borderRadius: Raio.pilula, alignItems: 'center', justifyContent: 'center' },

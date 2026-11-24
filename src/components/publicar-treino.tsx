@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 
 import { Botao } from '@/components/botao';
-import { Campo } from '@/components/campo';
+import { CampoMencao } from '@/components/campo-mencao';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import { publicacaoDaSessao, publicarTreino, removerPublicacao } from '@/lib/comunidade';
@@ -15,13 +15,16 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
   const [estado, setEstado] = useState<'carregando' | 'livre' | 'enviando' | 'publicado'>('carregando');
   const [pubId, setPubId] = useState<string | null>(null);
   const [legenda, setLegenda] = useState('');
+  const [legendaEnvio, setLegendaEnvio] = useState('');
   const [erro, setErro] = useState<string | null>(null);
 
   useEffect(() => {
     publicacaoDaSessao(sessaoId).then((p) => {
       if (p) {
         setPubId(p.id);
-        setLegenda(p.legenda ?? '');
+        const visivel = (p.legenda ?? '').replace(/@\[([^\]]{1,40})\]\([0-9a-f-]{36}\)/g, '@$1');
+        setLegenda(visivel);
+        setLegendaEnvio(visivel);
         setEstado('publicado');
       } else setEstado('livre');
     });
@@ -31,7 +34,7 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
     setErro(null);
     setEstado('enviando');
     try {
-      await publicarTreino(sessaoId, rotulo, legenda);
+      await publicarTreino(sessaoId, rotulo, legendaEnvio);
       const p = await publicacaoDaSessao(sessaoId);
       setPubId(p?.id ?? null);
       setEstado('publicado');
@@ -83,10 +86,13 @@ export function PublicarTreino({ sessaoId, rotulo }: { sessaoId: string; rotulo:
     <View style={estilos.caixa}>
       <Texto variante="rotulo">PUBLICAR NA COMUNIDADE</Texto>
       <Texto variante="legenda">Só a galera da Fit One vê, com seu nome abreviado. Nada de peso corporal.</Texto>
-      <Campo
-        value={legenda}
-        onChangeText={setLegenda}
-        placeholder="Escreva algo (opcional)"
+      <CampoMencao
+        valor={legenda}
+        aoMudar={(v, e) => {
+          setLegenda(v);
+          setLegendaEnvio(e);
+        }}
+        placeholder="Escreva algo · @ para marcar quem treinou junto"
         maxLength={280}
         multiline
         style={{ minHeight: 56, paddingTop: 14, fontSize: 16 }}

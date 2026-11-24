@@ -89,6 +89,7 @@ function Navegacao() {
         <Stack.Screen name="conversa/[id]" />
         <Stack.Screen name="publicar" />
         <Stack.Screen name="clube/[id]" />
+        <Stack.Screen name="notificacoes" />
         <Stack.Screen name="timer/[modalidade]" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />

@@ -7,8 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/avatar';
 import { BarraTopo } from '@/components/barra-topo';
 import { CardPublicacao } from '@/components/card-publicacao';
-import { Campo } from '@/components/campo';
+import { CampoMencao } from '@/components/campo-mencao';
 import { Texto } from '@/components/texto';
+import { TextoComMencoes } from '@/components/texto-mencoes';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import {
   apagarComentario,
@@ -30,6 +31,7 @@ export function TelaPublicacao({ id }: { id: string }) {
   const [p, setP] = useState<Publicacao | null | undefined>(undefined);
   const [lista, setLista] = useState<Comentario[]>([]);
   const [texto, setTexto] = useState('');
+  const [textoEnvio, setTextoEnvio] = useState('');
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const rolagem = useRef<ComponentRef<typeof ScrollView>>(null);
@@ -50,13 +52,14 @@ export function TelaPublicacao({ id }: { id: string }) {
   }, [carregar]);
 
   async function enviar() {
-    const t = texto.trim();
+    const t = textoEnvio.trim();
     if (!t || enviando) return;
     setErro(null);
     setEnviando(true);
     try {
       await comentar(id, t);
       setTexto('');
+      setTextoEnvio('');
       Haptics.selectionAsync();
       setLista(await listarComentarios(id));
       setP((atual) => (atual ? { ...atual, comentarios: atual.comentarios + 1 } : atual));
@@ -155,7 +158,7 @@ export function TelaPublicacao({ id }: { id: string }) {
                     {'  '}
                     {tempoAtras(c.criadoEm)}
                   </Texto>
-                  <Texto variante="corpo">{c.texto}</Texto>
+                  <TextoComMencoes texto={c.texto} />
                 </View>
               </Pressable>
             ))
@@ -173,10 +176,14 @@ export function TelaPublicacao({ id }: { id: string }) {
           </Texto>
         ) : null}
         <View style={estilos.barraEnviar}>
-          <Campo
-            value={texto}
-            onChangeText={setTexto}
-            placeholder="Escreva um comentário"
+          <CampoMencao
+            valor={texto}
+            aoMudar={(v, e) => {
+              setTexto(v);
+              setTextoEnvio(e);
+            }}
+            sugestoesEmCima
+            placeholder="Comente · @ para marcar alguém"
             maxLength={280}
             multiline
             style={{ flex: 1, minHeight: 48, maxHeight: 120, paddingTop: 12, fontSize: 16 }}

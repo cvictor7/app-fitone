@@ -4,6 +4,7 @@ import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { Avatar } from '@/components/avatar';
 import { IconeBalao, IconeFogo } from '@/components/icones';
 import { Texto } from '@/components/texto';
+import { TextoComMencoes } from '@/components/texto-mencoes';
 import { Cores, Espaco, Raio, infoModalidade } from '@/constants/theme';
 import { tempoAtras, type Publicacao } from '@/lib/comunidade';
 import { textoDuracao, textoVolume } from '@/lib/sessao-resumo';
@@ -75,7 +76,7 @@ export function CardPublicacao({ p, aoCurtir, aoRemover, aoComentar, podeRemover
           {p.resumo}
         </Texto>
       ) : null}
-      {p.legenda ? <Texto variante="corpo">{p.legenda}</Texto> : null}
+      {p.legenda ? <TextoComMencoes texto={p.legenda} /> : null}
 
       <View style={estilos.rodape}>
         <Pressable
