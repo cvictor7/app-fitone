@@ -14,7 +14,7 @@ import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
 // Registro rápido das modalidades que ainda não têm tela própria (Fase 1).
-// Na Fase 2: Cross e Hybrid ganham timers; Corrida e Bike vêm do relógio.
+// Cross e Hybrid têm timer e Corrida/Bike têm GPS; aqui fica o registro manual (esteira, aula, etc.).
 
 const SENSACOES = ['Muito leve', 'Leve', 'Na medida', 'Pesado', 'No limite'];
 
@@ -91,6 +91,13 @@ export default function RegistroRapido() {
             {treinoDoPlano ? treinoDoPlano.nome : 'Registre o treino que você fez.'}
           </Texto>
         </View>
+
+        {modalidade === 'corrida' || modalidade === 'bike' ? (
+          <Botao
+            titulo={modalidade === 'bike' ? 'Pedalar com GPS' : 'Correr com GPS'}
+            onPress={() => router.replace(`/gps/${modalidade}${treinoId ? `?treino=${treinoId}` : ''}` as any)}
+          />
+        ) : null}
 
         <View style={{ gap: Espaco.sm }}>
           <Texto variante="rotulo">DURAÇÃO</Texto>

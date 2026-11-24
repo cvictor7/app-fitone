@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'reac
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
+import { MapaPercurso } from '@/components/mapa-percurso';
 import { PublicarTreino } from '@/components/publicar-treino';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Modalidades, Raio } from '@/constants/theme';
@@ -20,6 +21,17 @@ export default function TreinoConcluido() {
   const revendo = ver === '1'; // aberto pelo histórico
   const [resumo, setResumo] = useState<ResumoSessao | null>(null);
   const [sensacao, setSensacao] = useState<number | null>(null);
+  // corrida/bike com GPS: mapa e parciais (só o dono enxerga esta tabela)
+  const [percurso, setPercurso] = useState<{ pontos: [number, number][]; parciais: { km: number; s: number }[] } | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('percursos')
+      .select('pontos, parciais')
+      .eq('sessao_id', id)
+      .maybeSingle()
+      .then(({ data }) => setPercurso(data ? { pontos: data.pontos ?? [], parciais: data.parciais ?? [] } : null));
+  }, [id]);
 
   useEffect(() => {
     buscarResumo(id).then((r) => {
@@ -69,6 +81,10 @@ export default function TreinoConcluido() {
             {resumo.concluidaEm.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
           </Texto>
         </View>
+
+        {percurso && percurso.pontos.length > 1 ? (
+          <MapaPercurso trechos={[percurso.pontos.map(([latitude, longitude]) => ({ latitude, longitude }))]} style={{ height: 220 }} />
+        ) : null}
 
         <View style={estilos.numeros}>
           {(resumo.series > 0

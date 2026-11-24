@@ -91,6 +91,7 @@ function Navegacao() {
         <Stack.Screen name="clube/[id]" />
         <Stack.Screen name="notificacoes" />
         <Stack.Screen name="timer/[modalidade]" options={{ gestureEnabled: false }} />
+        <Stack.Screen name="gps/[modalidade]" options={{ gestureEnabled: false }} />
       </Stack.Protected>
       <Stack.Screen name="privacidade" options={{ presentation: 'modal' }} />
       <Stack.Protected guard={logado}>

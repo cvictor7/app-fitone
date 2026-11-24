@@ -38,7 +38,13 @@
         }
       ],
       "expo-sharing",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Fit One usa sua localização só durante corrida e bike com GPS, para medir distância e ritmo e desenhar o percurso (que só você vê)."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

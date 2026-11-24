@@ -98,12 +98,15 @@ export function resumoTreino(t: Treino, nomeModalidade: string) {
 export function rotaComecar(t: Treino) {
   if (t.modalidade === 'musculacao') return `/sessao/${t.id}`;
   if (t.modalidade === 'cross' || t.modalidade === 'hybrid') return `/timer/${t.modalidade}?treino=${t.id}`;
+  if (t.modalidade === 'corrida' || t.modalidade === 'bike') return `/gps/${t.modalidade}?treino=${t.id}`;
   return `/registro/${t.modalidade}?treino=${t.id}`;
 }
 
-// Por conta própria: Cross e Hybrid abrem o timer; o resto, o registro rápido
+// Por conta própria: Cross e Hybrid abrem o timer; Corrida e Bike, o GPS; o resto, o registro rápido
 export function rotaPorContaPropria(m: string) {
-  return m === 'cross' || m === 'hybrid' ? `/timer/${m}` : `/registro/${m}`;
+  if (m === 'cross' || m === 'hybrid') return `/timer/${m}`;
+  if (m === 'corrida' || m === 'bike') return `/gps/${m}`;
+  return `/registro/${m}`;
 }
 
 export function textoReps(e: { repsMin: number; repsMax: number }) {
