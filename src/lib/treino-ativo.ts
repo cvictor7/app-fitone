@@ -191,6 +191,27 @@ export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
       })),
   );
 
+  const notasEnvio = t.exercicios
+    .filter((e) => e.nota && e.nota.trim())
+    .map((e) => ({ exercicio_id: e.exercicioId, texto: e.nota!.trim().slice(0, 300) }));
+  const observacao = t.cardio && t.cardioFeito ? `Cardio: ${t.cardio}` : null;
+
+  // Caminho rápido: tudo numa viagem só ao banco (SQL 0024)
+  const rapido = await supabase.rpc('concluir_treino', {
+    p: {
+      id: sessaoId,
+      gym_id: t.gymId,
+      treino_id: t.treinoId,
+      iniciada_em: t.iniciadoEm,
+      observacao,
+      series: feitas.map(({ sessao_id, ...resto }) => resto),
+      notas: notasEnvio,
+    },
+  });
+  if (!rapido.error) return { ok: true, sessaoId };
+  // função ainda não existe no banco (SQL não rodado): segue pelo caminho antigo
+  if (rapido.error.code !== 'PGRST202') return { ok: false, erro: rapido.error.message };
+
   // upsert: se a internet caiu no meio e a pessoa tentar de novo, não duplica
   const r1 = await supabase.from('sessoes').upsert(
     {
@@ -201,7 +222,7 @@ export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
       origem: 'app',
       iniciada_em: t.iniciadoEm,
       status: 'em_andamento',
-      observacao: t.cardio && t.cardioFeito ? `Cardio: ${t.cardio}` : null,
+      observacao,
     },
     { onConflict: 'id' },
   );
@@ -220,10 +241,10 @@ export async function salvarTreino(t: TreinoAtivo): Promise<ResultadoSalvar> {
   if (r3.error) return { ok: false, erro: r3.error.message };
 
   // anotações de cada exercício (se falhar, o treino já está salvo: não trava)
-  const notas = t.exercicios
-    .filter((e) => e.nota && e.nota.trim())
-    .map((e) => ({ sessao_id: sessaoId, exercicio_id: e.exercicioId, texto: e.nota!.trim().slice(0, 300) }));
-  if (notas.length > 0) await supabase.from('notas_exercicio').upsert(notas, { onConflict: 'sessao_id,exercicio_id' });
+  if (notasEnvio.length > 0)
+    await supabase
+      .from('notas_exercicio')
+      .upsert(notasEnvio.map((n) => ({ ...n, sessao_id: sessaoId })), { onConflict: 'sessao_id,exercicio_id' });
 
   return { ok: true, sessaoId };
 }
