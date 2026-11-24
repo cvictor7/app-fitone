@@ -41,6 +41,7 @@ export default function Compartilhar() {
   const [resumo, setResumo] = useState<ResumoSessao | null>(null);
   const [tipo, setTipo] = useState<Tipo>('card');
   const [foto, setFoto] = useState<string | null>(null);
+  const [fundoSelo, setFundoSelo] = useState(false); // com foto: sem fundo (padrão) ou fundo escuro
   const [palco, setPalco] = useState({ w: 0, h: 0 });
   const [selo, setSelo] = useState({ w: 0, h: 0 }); // tamanho natural do selo
   const [gerando, setGerando] = useState(false);
@@ -175,6 +176,9 @@ export default function Compartilhar() {
   if (!musculacao && resumo.sensacao) numeros.push([SENSACOES[resumo.sensacao - 1], 'como foi']);
 
   const comFoto = tipo === 'foto' && !!foto;
+  // sem fundo em cima da foto: sombra nas letras para ler até em foto clara
+  const sombra = comFoto && !fundoSelo ? { textShadowColor: 'rgba(0,0,0,0.85)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 8 * e } : null;
+  const cinzaSelo = comFoto && !fundoSelo ? Cores.branco : Cores.cinza; // cinza some na foto: vira branco
   const mexe = tipo !== 'adesivo'; // no adesivo quem ajusta é o Instagram
 
   // ---------- o selo do treino (mesmo desenho nos três jeitos) ----------
@@ -188,7 +192,7 @@ export default function Compartilhar() {
       }}
       style={[
         { width: 312 * e, alignItems: 'center', gap: 6 * e, paddingVertical: 20 * e, paddingHorizontal: 16 * e, borderRadius: 22 * e },
-        comFoto && { backgroundColor: 'rgba(10,10,10,0.62)' },
+        comFoto && fundoSelo && { backgroundColor: 'rgba(10,10,10,0.62)' },
       ]}>
       <Logo largura={96 * e} comCidade={false} />
       <Texto
@@ -196,11 +200,11 @@ export default function Compartilhar() {
         cor={Cores.verde}
         numberOfLines={1}
         adjustsFontSizeToFit
-        style={{ fontSize: (curto ? 150 : 84) * e, lineHeight: (curto ? 144 : 88) * e, marginTop: 6 * e, maxWidth: 280 * e }}>
+        style={[{ fontSize: (curto ? 150 : 84) * e, lineHeight: (curto ? 144 : 88) * e, marginTop: 6 * e, maxWidth: 280 * e }, sombra]}>
         {resumo.rotulo}
       </Texto>
       {resumo.nome && resumo.nome.toUpperCase() !== resumo.rotulo ? (
-        <Texto variante="subtitulo" numberOfLines={2} style={{ fontSize: 22 * e, lineHeight: 26 * e, textAlign: 'center' }}>
+        <Texto variante="subtitulo" numberOfLines={2} style={[{ fontSize: 22 * e, lineHeight: 26 * e, textAlign: 'center' }, sombra]}>
           {resumo.nome}
         </Texto>
       ) : null}
@@ -208,10 +212,10 @@ export default function Compartilhar() {
       <View style={{ flexDirection: 'row', gap: 22 * e, marginTop: 8 * e }}>
         {numeros.map(([n, r, cor]) => (
           <View key={r} style={{ alignItems: 'center' }}>
-            <Texto variante="numero" cor={cor ?? Cores.branco} numberOfLines={1} style={{ fontSize: 30 * e, lineHeight: 32 * e }}>
+            <Texto variante="numero" cor={cor ?? Cores.branco} numberOfLines={1} style={[{ fontSize: 30 * e, lineHeight: 32 * e }, sombra]}>
               {n}
             </Texto>
-            <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e }}>
+            <Texto variante="legenda" cor={cinzaSelo} style={[{ fontSize: 12 * e, lineHeight: 16 * e }, sombra]}>
               {r}
             </Texto>
           </View>
@@ -219,24 +223,24 @@ export default function Compartilhar() {
       </View>
 
       {musculacao && resumo.melhorSerie ? (
-        <Texto variante="legenda" cor={Cores.cinza} numberOfLines={1} style={{ fontSize: 13 * e, lineHeight: 18 * e, marginTop: 2 * e }}>
+        <Texto variante="legenda" cor={cinzaSelo} numberOfLines={1} style={[{ fontSize: 13 * e, lineHeight: 18 * e, marginTop: 2 * e }, sombra]}>
           Melhor série: {resumo.melhorSerie.exercicio.toLowerCase()} · {resumo.melhorSerie.kg.toLocaleString('pt-BR')} kg ×{' '}
           {resumo.melhorSerie.reps}
         </Texto>
       ) : null}
       {!musculacao && resumo.observacao ? (
-        <Texto variante="corpo" cor={Cores.cinza} numberOfLines={5} style={{ fontSize: 14 * e, lineHeight: 20 * e, textAlign: 'center' }}>
+        <Texto variante="corpo" cor={cinzaSelo} numberOfLines={5} style={[{ fontSize: 14 * e, lineHeight: 20 * e, textAlign: 'center' }, sombra]}>
           {resumo.observacao}
         </Texto>
       ) : null}
 
       <View style={{ borderColor: Cores.verde, borderWidth: 1.5 * e, borderRadius: 99, paddingHorizontal: 12 * e, paddingVertical: 4 * e, marginTop: 6 * e }}>
-        <Texto variante="subtitulo" cor={Cores.branco} style={{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }}>
+        <Texto variante="subtitulo" cor={Cores.branco} style={[{ fontSize: 14 * e, lineHeight: 18 * e, letterSpacing: 1 }, sombra]}>
           {info.nome}
         </Texto>
       </View>
       {tipo !== 'adesivo' ? (
-        <Texto variante="legenda" cor={Cores.cinza} style={{ fontSize: 12 * e, lineHeight: 16 * e, marginTop: 2 * e }}>
+        <Texto variante="legenda" cor={cinzaSelo} style={[{ fontSize: 12 * e, lineHeight: 16 * e, marginTop: 2 * e }, sombra]}>
           Fit One Manaus · Vila da Prata
         </Texto>
       ) : null}
@@ -313,6 +317,16 @@ export default function Compartilhar() {
               }}>
               <Texto variante="subtitulo">+</Texto>
             </Pressable>
+            {tipo === 'foto' ? (
+              <Pressable
+                hitSlop={8}
+                style={[estilos.ajuste, { width: 'auto', paddingHorizontal: 12 }, fundoSelo && { backgroundColor: Cores.verde, borderColor: Cores.verde }]}
+                onPress={() => setFundoSelo((f) => !f)}>
+                <Texto variante="legenda" cor={fundoSelo ? Cores.preto : Cores.texto}>
+                  Fundo
+                </Texto>
+              </Pressable>
+            ) : null}
             <Pressable hitSlop={8} style={[estilos.ajuste, { width: 'auto', paddingHorizontal: 12 }]} onPress={() => posicaoInicial(tipo, altura, base)}>
               <Texto variante="legenda" cor={Cores.texto}>
                 Voltar
