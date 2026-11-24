@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/avatar';
 import { CardDesafio } from '@/components/card-desafio';
 import { CardPublicacao } from '@/components/card-publicacao';
+import { ListaClubes } from '@/components/lista-clubes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Raio } from '@/constants/theme';
 import {
@@ -18,6 +19,7 @@ import {
   type LinhaRanking,
   type Publicacao,
 } from '@/lib/comunidade';
+import { listarClubes, type Clube } from '@/lib/clubes';
 import { listarDesafios, type Desafio } from '@/lib/desafios';
 import { useSessao } from '@/lib/sessao';
 
@@ -25,7 +27,7 @@ import { useSessao } from '@/lib/sessao';
 // A mesma tela serve ao aluno e ao personal/admin (lado "personal"): o personal vê, manda "Boa!",
 // comenta e cria desafios; o admin também pode apagar qualquer publicação (moderação).
 
-type Aba = 'feed' | 'ranking' | 'desafios';
+type Aba = 'feed' | 'ranking' | 'desafios' | 'clubes';
 
 type Lado = 'aluno' | 'personal';
 
@@ -34,11 +36,13 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
   const equipe = lado === 'personal';
   const admin = papel === 'admin';
   const rotaPublicacao = (id: string) => (equipe ? `/personal/publicacao/${id}` : `/publicacao/${id}`) as any;
+  const rotaClube = (id: string) => (equipe ? `/personal/clube/${id}` : `/clube/${id}`) as any;
   const rotaDesafio = (id: string) => (equipe ? `/personal/desafio/${id}` : `/desafio/${id}`) as any;
   const [aba, setAba] = useState<Aba>('feed');
   const [feed, setFeed] = useState<Publicacao[]>([]);
   const [ranking, setRanking] = useState<LinhaRanking[]>([]);
   const [desafios, setDesafios] = useState<Desafio[]>([]);
+  const [clubes, setClubes] = useState<Clube[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [atualizando, setAtualizando] = useState(false);
   const [temMais, setTemMais] = useState(true);
@@ -49,7 +53,13 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
     if (!gymId) return;
     setErro(null);
     try {
-      const [f, r, d] = await Promise.all([carregarFeed(gymId), carregarRanking(gymId), listarDesafios(gymId)]);
+      const [f, r, d, c] = await Promise.all([
+        carregarFeed(gymId),
+        carregarRanking(gymId),
+        listarDesafios(gymId),
+        listarClubes(gymId),
+      ]);
+      setClubes(c);
       setFeed(f);
       setRanking(r);
       setDesafios(d);
@@ -124,7 +134,13 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
     <View style={{ gap: Espaco.md, marginBottom: Espaco.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Espaco.sm }}>
         <Texto variante="titulo">Comunidade</Texto>
-        {!equipe ? (
+        {aba === 'clubes' ? (
+          <Pressable onPress={() => router.push(rotaClube('novo'))} style={estilos.publicar} hitSlop={6}>
+            <Texto variante="corpo" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
+              + Clube
+            </Texto>
+          </Pressable>
+        ) : !equipe ? (
           <Pressable onPress={() => router.push('/publicar')} style={estilos.publicar} hitSlop={6}>
             <Texto variante="corpo" cor={Cores.preto} style={{ fontFamily: 'Archivo_700Bold' }}>
               + Publicar
@@ -139,7 +155,7 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
         ) : null}
       </View>
       <View style={estilos.seletor}>
-        {(['feed', 'ranking', 'desafios'] as const).map((a) => (
+        {(['feed', 'ranking', 'desafios', 'clubes'] as const).map((a) => (
           <Pressable
             key={a}
             onPress={() => {
@@ -148,7 +164,7 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
             }}
             style={[estilos.opcao, aba === a && { backgroundColor: Cores.verde }]}>
             <Texto variante="corpo" cor={aba === a ? Cores.preto : Cores.textoSecundario} style={{ fontFamily: 'Archivo_600SemiBold' }}>
-              {a === 'feed' ? 'Treinos' : a === 'ranking' ? 'Ranking' : 'Desafios'}
+              {a === 'feed' ? 'Feed' : a === 'ranking' ? 'Ranking' : a === 'desafios' ? 'Desafios' : 'Clubes'}
             </Texto>
           </Pressable>
         ))}
@@ -222,6 +238,16 @@ export function TelaComunidade({ lado }: { lado: Lado }) {
               </Texto>
             ) : undefined
           }
+        />
+      ) : aba === 'clubes' ? (
+        <FlatList
+          data={[0]}
+          keyExtractor={() => 'clubes'}
+          contentContainerStyle={estilos.conteudo}
+          ListHeaderComponent={cabecalho}
+          refreshControl={refresh}
+          keyboardShouldPersistTaps="handled"
+          renderItem={() => <ListaClubes clubes={clubes} rotaClube={rotaClube} />}
         />
       ) : aba === 'desafios' ? (
         <FlatList

@@ -37,6 +37,7 @@ begin
   -- recomeça do zero (apaga a demonstração anterior, em cascata)
   delete from auth.users where email like '%@demo.fitone.invalid';
   delete from public.desafios where gym_id = v_gym and titulo like '% (demo)';
+  delete from public.clubes where gym_id = v_gym and nome like '% (demo)';
 
   perform setseed(0.42);
 
@@ -123,10 +124,23 @@ begin
       insert into public.desafio_participantes (desafio_id, user_id) values (v_d2, v_ids[i]) on conflict do nothing;
     end if;
   end loop;
+
+  -- clubes com membros
+  insert into public.clubes (gym_id, criado_por, nome, descricao, fechado)
+  values (v_gym, v_ids[1], 'Turma das 6h (demo)', 'Quem treina antes do trabalho', false) returning id into v_d1;
+  insert into public.clubes (gym_id, criado_por, nome, descricao, fechado)
+  values (v_gym, v_ids[4], 'Hybrid de quinta (demo)', 'Prova híbrida toda quinta às 19h', false) returning id into v_d2;
+  for i in 1 .. 8 loop
+    insert into public.clube_membros (clube_id, user_id, dono) values (v_d1, v_ids[i], i = 1) on conflict do nothing;
+  end loop;
+  for i in 4 .. 11 loop
+    insert into public.clube_membros (clube_id, user_id, dono) values (v_d2, v_ids[i], i = 4) on conflict do nothing;
+  end loop;
 end $$;
 
 select count(*) filter (where email like '%@demo.fitone.invalid') as alunos_demo from auth.users;
 
--- ===================== LIMPAR (rode só estas duas linhas para tirar a demonstração) =====================
+-- ===================== LIMPAR (rode só estas três linhas para tirar a demonstração) =====================
 -- delete from auth.users where email like '%@demo.fitone.invalid';
 -- delete from public.desafios where titulo like '% (demo)';
+-- delete from public.clubes where nome like '% (demo)';
