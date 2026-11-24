@@ -26,7 +26,10 @@ export function Botao({ titulo, tipo = 'principal', cor = Cores.verde, onPress, 
         typeof style === 'function' ? style(estado) : style,
       ]}
       {...resto}>
-      <Text style={[estilos.texto, { color: principal ? Cores.preto : cor }]}>{titulo}</Text>
+      {/* nunca quebra a palavra em duas linhas: se não couber, a letra diminui um pouco */}
+      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={[estilos.texto, { color: principal ? Cores.preto : cor }]}>
+        {titulo}
+      </Text>
     </Pressable>
   );
 }
@@ -37,7 +40,7 @@ const estilos = StyleSheet.create({
     borderRadius: Raio.md,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
   pressionado: {
     opacity: 0.85,
