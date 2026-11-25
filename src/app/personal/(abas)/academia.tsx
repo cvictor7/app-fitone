@@ -32,12 +32,15 @@ import {
   definirPapel,
   listarAvisos,
   listarMembros,
+  listarSumidos,
   readmitirMembro,
   removerMembro,
+  redefinirSenha,
   trocarCodigo,
   type Aviso,
   type Membro,
   type Painel,
+  type Sumido,
 } from "@/lib/academia";
 import { dataBR, hojeISO, somarDias } from "@/lib/desafios";
 import { useSessao } from "@/lib/sessao";
@@ -117,6 +120,8 @@ export default function PainelAcademia() {
   const [painel, setPainel] = useState<Painel | null>(null);
   const [avisos, setAvisos] = useState<Aviso[]>([]);
   const [membros, setMembros] = useState<Membro[]>([]);
+  const [sumidos, setSumidos] = useState<Sumido[]>([]);
+  const [verTodosSumidos, setVerTodosSumidos] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
   const [titulo, setTitulo] = useState("");
@@ -142,6 +147,7 @@ export default function PainelAcademia() {
       setCodigo(c);
       setAvisos(a);
       setMembros(m);
+      listarSumidos(gymId).then(setSumidos).catch(() => setSumidos([]));
     } catch {
       setErro(
         "Não deu para carregar o painel. Puxe para baixo para tentar de novo.",
@@ -301,6 +307,32 @@ export default function PainelAcademia() {
             ),
         },
         {
+          texto: "Redefinir senha (esqueceu)",
+          aoTocar: () =>
+            Alert.alert(
+              `Redefinir a senha de ${m.nome}?`,
+              "O app cria uma senha provisória para você passar para a pessoa. Ela troca depois em Perfil → Editar perfil.",
+              [
+                { text: "Cancelar", style: "cancel" },
+                {
+                  text: "Redefinir",
+                  onPress: async () => {
+                    try {
+                      setErro(null);
+                      const senha = await redefinirSenha(gymId, m.userId);
+                      Alert.alert(
+                        "Senha nova",
+                        `Passe para ${m.nome.split(" ")[0]}:\n\n${senha}\n\nEla entra com o e-mail dela e essa senha, e troca em Perfil → Editar perfil.`,
+                      );
+                    } catch (e: any) {
+                      setErro(e?.message ?? "Não deu para redefinir.");
+                    }
+                  },
+                },
+              ],
+            ),
+        },
+        {
           texto: "Remover da academia",
           destrutivo: true,
           aoTocar: () => remover(m),
@@ -379,6 +411,38 @@ export default function PainelAcademia() {
               Conta só quem registra treino pelo app. {painel.personais} na
               equipe (personal/admin).
             </Texto>
+
+            {sumidos.length > 0 ? (
+              <View style={estilos.bloco}>
+                <Texto variante="rotulo">QUEM SUMIU · 14+ DIAS SEM APARECER</Texto>
+                <Texto variante="legenda">
+                  Último treino no app ou check-in. Vale uma mensagem ou um toque do personal.
+                </Texto>
+                {(verTodosSumidos ? sumidos : sumidos.slice(0, 5)).map((s) => (
+                  <View key={s.userId} style={estilos.linhaSumido}>
+                    <Avatar nome={s.nome} tamanho={34} />
+                    <View style={{ flex: 1 }}>
+                      <Texto variante="corpo" numberOfLines={1}>
+                        {s.nome}
+                      </Texto>
+                      <Texto variante="legenda" numberOfLines={1}>
+                        {s.personal ? `Personal: ${s.personal}` : "Sem personal"}
+                      </Texto>
+                    </View>
+                    <Texto variante="legenda" cor={Cores.perigo}>
+                      {s.dias} dias
+                    </Texto>
+                  </View>
+                ))}
+                {sumidos.length > 5 ? (
+                  <Pressable onPress={() => setVerTodosSumidos((v) => !v)} hitSlop={8}>
+                    <Texto variante="corpo" cor={Cores.verde}>
+                      {verTodosSumidos ? "Mostrar menos" : `Ver todos (${sumidos.length})`}
+                    </Texto>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
 
             <View style={estilos.bloco}>
               <Texto variante="rotulo">TREINOS POR MODALIDADE · 30 DIAS</Texto>
@@ -626,6 +690,7 @@ export default function PainelAcademia() {
 }
 
 const estilos = StyleSheet.create({
+  linhaSumido: { flexDirection: "row", alignItems: "center", gap: Espaco.sm },
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { padding: Espaco.lg, gap: Espaco.lg, paddingBottom: Espaco.xxl },
   grade: { flexDirection: "row", flexWrap: "wrap", gap: Espaco.sm },

@@ -141,3 +141,33 @@ export async function trocarCodigo(gymId: string, codigo: string): Promise<strin
   if (error) throw error;
   return data as string;
 }
+
+/** Admin troca a senha de alguém da academia por uma provisória (SQL 0027). Devolve a senha nova. */
+export async function redefinirSenha(gymId: string, userId: string): Promise<string> {
+  // fácil de ditar na recepção: "fit" + 5 números
+  const senha = `fit${Math.floor(10000 + Math.random() * 90000)}`;
+  const { error } = await supabase.rpc('admin_redefinir_senha', { p_gym: gymId, p_user: userId, p_senha: senha });
+  if (error) {
+    if (error.code === 'PGRST202') throw new Error('Rode o SQL 0027 no Supabase para liberar isso.');
+    throw new Error(error.message);
+  }
+  return senha;
+}
+
+export type Sumido = { userId: string; nome: string; ultima: Date; dias: number; personal: string | null };
+
+/** Alunos que já apareceram e não voltam há X dias (treino pelo app ou check-in). SQL 0027. */
+export async function listarSumidos(gymId: string, dias = 14): Promise<Sumido[]> {
+  const { data, error } = await supabase.rpc('alunos_sumidos', { p_gym: gymId, p_dias: dias });
+  if (error) {
+    if (error.code === 'PGRST202') return []; // SQL 0027 ainda não rodado
+    throw new Error(error.message);
+  }
+  return ((data ?? []) as any[]).map((r) => ({
+    userId: r.user_id,
+    nome: r.nome || 'Sem nome',
+    ultima: new Date(r.ultima),
+    dias: r.dias,
+    personal: r.personal ?? null,
+  }));
+}

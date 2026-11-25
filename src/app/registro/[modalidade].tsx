@@ -10,6 +10,7 @@ import { BarraTopo } from '@/components/barra-topo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Modalidades, Raio, type Modalidade } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
+import { erroDeConexao, guardarSessaoNaFila } from '@/lib/fila-envio';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
@@ -46,7 +47,7 @@ export default function RegistroRapido() {
     setSalvando(true);
     const fim = new Date();
     const inicio = new Date(fim.getTime() - minutos * 60000);
-    const { data, error } = await supabase.from('sessoes').insert({
+    const linha = {
       id: idSessao,
       gym_id: gymId,
       modalidade: modalidade in Modalidades ? modalidade : 'livre',
@@ -58,7 +59,16 @@ export default function RegistroRapido() {
       sensacao: sensacao === null ? null : sensacao + 1,
       observacao: observacao.trim() || null,
       status: 'concluida',
-    }).select('id').single();
+    };
+    const { data, error } = await supabase.from('sessoes').insert(linha).select('id').single();
+    if (error && erroDeConexao(error.message)) {
+      await guardarSessaoNaFila(linha);
+      setSalvando(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Guardado no celular', 'Está sem internet. Sobe sozinho quando a conexão voltar.');
+      router.replace('/');
+      return;
+    }
     setSalvando(false);
     // 23505 = já tinha salvo na tentativa anterior (a resposta é que se perdeu)
     if (error && error.code === '23505') {

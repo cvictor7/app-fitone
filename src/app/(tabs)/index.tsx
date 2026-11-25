@@ -1,5 +1,5 @@
 import { Link, router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,6 +12,7 @@ import { ChipModalidade } from '@/components/chip-modalidade';
 import { Logo } from '@/components/logo';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, ListaModalidades, Modalidades, Raio, infoModalidade } from '@/constants/theme';
+import { enviarFila, usePendentes } from '@/lib/fila-envio';
 import { META_SEMANAL, resumoTreino, textoQuando, useDadosAluno } from '@/lib/dados';
 import { rotaPorContaPropria } from '@/lib/dados';
 import { useSessao } from '@/lib/sessao';
@@ -29,6 +30,14 @@ function dataDeHoje() {
 export default function Hoje() {
   const { perfil } = useSessao();
   const dados = useDadosAluno();
+  const pendentes = usePendentes();
+  // quando um treino guardado sobe, atualiza a tela (aparece como feito)
+  const antes = useRef(pendentes);
+  useEffect(() => {
+    if (pendentes < antes.current) dados.recarregar();
+    antes.current = pendentes;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendentes]);
   const primeiroNome = perfil?.nome?.split(' ')[0] ?? '';
   const recorde = dados.recordes[0];
   const diasComTreino = dados.semana.filter((d) => d.feitos.length > 0).length;
@@ -51,6 +60,24 @@ export default function Hoje() {
         </View>
 
         <Texto variante="titulo">Bora, {primeiroNome}</Texto>
+
+        {pendentes > 0 || dados.semInternet ? (
+          <Pressable
+            onPress={async () => {
+              await enviarFila();
+              dados.recarregar();
+            }}
+            style={estilos.semNet}>
+            <Texto variante="corpo" style={{ flex: 1 }}>
+              {pendentes > 0
+                ? `${pendentes} ${pendentes === 1 ? 'treino esperando' : 'treinos esperando'} internet para subir.`
+                : 'Sem internet: mostrando seu plano guardado no celular. Dá para treinar normal.'}
+            </Texto>
+            <Texto variante="legenda" cor={Cores.verde}>
+              Tentar
+            </Texto>
+          </Pressable>
+        ) : null}
 
         <AtalhosConversa soNaoLidas />
         <AvisosAcademia />
@@ -211,6 +238,7 @@ export default function Hoje() {
 }
 
 const estilos = StyleSheet.create({
+  semNet: { flexDirection: 'row', alignItems: 'center', gap: Espaco.sm, padding: Espaco.md, borderRadius: 14, borderWidth: 1, borderColor: Cores.borda, backgroundColor: Cores.superficie },
   tela: { flex: 1, backgroundColor: Cores.fundo },
   conteudo: { paddingHorizontal: Espaco.lg - 4, paddingBottom: Espaco.xl, gap: Espaco.lg },
   topo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: Espaco.sm },

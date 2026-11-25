@@ -30,6 +30,7 @@ import {
   type EstadoGps,
   type TipoGps,
 } from '@/lib/gps';
+import { erroDeConexao, guardarSessaoNaFila } from '@/lib/fila-envio';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 
@@ -213,7 +214,7 @@ export default function TelaGps() {
     setSalvando(true);
     const resumo = resumoPercurso(tipo, e.distanciaM, duracaoS, e.parciais);
     const fim = new Date((inicio.current || Date.now()) + duracaoS * 1000);
-    const { error } = await supabase.from('sessoes').insert({
+    const linha = {
       id: idSessao,
       gym_id: gymId,
       modalidade: tipo,
@@ -225,19 +226,30 @@ export default function TelaGps() {
       sensacao: sensacao === null ? null : sensacao + 1,
       observacao: nota.trim() ? `${resumo}\n${nota.trim()}` : resumo,
       status: 'concluida',
-    });
-    if (error && error.code !== '23505') {
-      setSalvando(false);
-      Alert.alert('Não deu para salvar', 'Confira a internet e toque em Salvar de novo. A atividade continua guardada no celular.');
-      return;
-    }
-    await supabase.from('percursos').upsert({
+    };
+    const percurso = {
       sessao_id: idSessao,
       distancia_m: Math.round(e.distanciaM),
       duracao_s: duracaoS,
       parciais: e.parciais,
       pontos: simplificar(e.pontos),
-    });
+    };
+    const { error } = await supabase.from('sessoes').insert(linha);
+    if (error && erroDeConexao(error.message)) {
+      await guardarSessaoNaFila(linha, percurso);
+      await AsyncStorage.removeItem(CHAVE);
+      setSalvando(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Guardado no celular', 'Está sem internet. Sobe sozinho quando a conexão voltar.');
+      router.replace('/');
+      return;
+    }
+    if (error && error.code !== '23505') {
+      setSalvando(false);
+      Alert.alert('Não deu para salvar', 'Confira a internet e toque em Salvar de novo. A atividade continua guardada no celular.');
+      return;
+    }
+    await supabase.from('percursos').upsert(percurso);
     await AsyncStorage.removeItem(CHAVE);
     setSalvando(false);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

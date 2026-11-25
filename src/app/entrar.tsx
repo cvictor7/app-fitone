@@ -10,7 +10,8 @@ import { Cores, Espaco } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 // Entrar com e-mail e senha. A pessoa faz isso uma vez: o app guarda a sessão no celular.
-// (O login por código no e-mail volta quando houver envio de e-mail próprio, Etapa 15.)
+// Esqueci a senha: manda um código de 6 dígitos por e-mail (precisa do e-mail próprio configurado
+// no Supabase). Sem isso, a recepção redefine pelo app (admin → Academia → pessoa → Redefinir senha).
 
 function traduzirErro(msg: string) {
   const m = msg.toLowerCase();
@@ -20,12 +21,17 @@ function traduzirErro(msg: string) {
   if (m.includes('not confirmed')) return 'Conta ainda não confirmada. Avise o Victor (confirmação de e-mail ligada no Supabase).';
   if (m.includes('rate limit') || m.includes('security purposes')) return 'Muitas tentativas em pouco tempo. Espere um pouco e tente de novo.';
   if (m.includes('network') || m.includes('fetch')) return 'Sem internet. Confira a conexão e tente de novo.';
+  if (m.includes('expired') || m.includes('invalid') || m.includes('token')) return 'Código errado ou vencido. Confira ou peça outro.';
+  if (m.includes('sending') || m.includes('smtp') || m.includes('not authorized')) return 'Não deu para mandar o e-mail agora. Peça na recepção para redefinir sua senha.';
   if (m.includes('email')) return 'Confira se o e-mail está certo.';
   return 'Não deu certo agora. Tente de novo.';
 }
 
 export default function Entrar() {
-  const [modo, setModo] = useState<'criar' | 'entrar'>('criar');
+  const [modo, setModo] = useState<'criar' | 'entrar' | 'recuperar'>('criar');
+  const [codigoEnviado, setCodigoEnviado] = useState(false);
+  const [codigo, setCodigo] = useState('');
+  const [aviso, setAviso] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [verSenha, setVerSenha] = useState(false);
@@ -34,6 +40,39 @@ export default function Entrar() {
 
   const emailValido = /^\S+@\S+\.\S+$/.test(email.trim());
   const pronto = emailValido && senha.length >= 6;
+
+  async function mandarCodigo() {
+    setErro('');
+    setAviso('');
+    setEnviando(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+    setEnviando(false);
+    if (error) return setErro(traduzirErro(error.message));
+    setCodigoEnviado(true);
+    setAviso('Se esse e-mail tem conta, chegou um código. Olhe também o spam.');
+  }
+
+  async function trocarSenha() {
+    setErro('');
+    setEnviando(true);
+    const v = await supabase.auth.verifyOtp({ email: email.trim().toLowerCase(), token: codigo.trim(), type: 'recovery' });
+    if (v.error) {
+      setEnviando(false);
+      return setErro(traduzirErro(v.error.message));
+    }
+    const u = await supabase.auth.updateUser({ password: senha });
+    setEnviando(false);
+    if (u.error) return setErro(traduzirErro(u.error.message));
+    // já entrou com a senha nova: o layout raiz troca de tela sozinho
+  }
+
+  function irPara(m: 'criar' | 'entrar' | 'recuperar') {
+    setErro('');
+    setAviso('');
+    setCodigo('');
+    setCodigoEnviado(false);
+    setModo(m);
+  }
 
   async function continuar() {
     setErro('');
@@ -58,11 +97,17 @@ export default function Entrar() {
           </View>
 
           <View style={estilos.bloco}>
-            <Texto variante="titulo">{modo === 'criar' ? 'Bora treinar' : 'Bem-vindo de volta'}</Texto>
+            <Texto variante="titulo">
+              {modo === 'criar' ? 'Bora treinar' : modo === 'entrar' ? 'Bem-vindo de volta' : 'Nova senha'}
+            </Texto>
             <Texto variante="legenda">
               {modo === 'criar'
                 ? 'Crie sua conta. Você faz isso uma vez só.'
-                : 'Entre com o e-mail e a senha da sua conta.'}
+                : modo === 'entrar'
+                  ? 'Entre com o e-mail e a senha da sua conta.'
+                  : codigoEnviado
+                    ? 'Digite o código que chegou no e-mail e crie a senha nova.'
+                    : 'Digite seu e-mail. Mandamos um código para criar uma senha nova.'}
             </Texto>
 
             <Campo
@@ -74,6 +119,58 @@ export default function Entrar() {
               autoComplete="email"
               textContentType="emailAddress"
             />
+            {modo === 'recuperar' ? (
+              <>
+                {codigoEnviado ? (
+                  <>
+                    <Campo
+                      value={codigo}
+                      onChangeText={(t) => setCodigo(t.replace(/\D/g, '').slice(0, 8))}
+                      placeholder="Código do e-mail"
+                      keyboardType="number-pad"
+                      autoComplete="one-time-code"
+                      textContentType="oneTimeCode"
+                    />
+                    <Campo
+                      value={senha}
+                      onChangeText={setSenha}
+                      placeholder="Senha nova (mín. 6)"
+                      secureTextEntry={!verSenha}
+                      autoCapitalize="none"
+                      autoComplete="new-password"
+                      textContentType="newPassword"
+                    />
+                    <Botao
+                      titulo={enviando ? 'Aguarde...' : 'Salvar senha nova'}
+                      disabled={codigo.length < 6 || senha.length < 6 || enviando}
+                      style={(codigo.length < 6 || senha.length < 6 || enviando) && { opacity: 0.4 }}
+                      onPress={trocarSenha}
+                    />
+                    <Pressable onPress={mandarCodigo} hitSlop={10} style={{ alignSelf: 'center' }}>
+                      <Texto variante="corpo" cor={Cores.textoSecundario}>
+                        Mandar outro código
+                      </Texto>
+                    </Pressable>
+                  </>
+                ) : (
+                  <Botao
+                    titulo={enviando ? 'Aguarde...' : 'Mandar código'}
+                    disabled={!emailValido || enviando}
+                    style={(!emailValido || enviando) && { opacity: 0.4 }}
+                    onPress={mandarCodigo}
+                  />
+                )}
+                <Texto variante="legenda" style={{ textAlign: 'center' }}>
+                  Não chegou? Peça na recepção da Fit One para redefinir sua senha.
+                </Texto>
+                <Pressable onPress={() => irPara('entrar')} hitSlop={10} style={{ alignSelf: 'center', paddingTop: Espaco.xs }}>
+                  <Texto variante="corpo" cor={Cores.textoSecundario}>
+                    Voltar para entrar
+                  </Texto>
+                </Pressable>
+              </>
+            ) : (
+            <>
             <View>
               <Campo
                 value={senha}
@@ -101,18 +198,31 @@ export default function Entrar() {
               onPress={continuar}
             />
 
+            {modo === 'entrar' ? (
+              <Pressable onPress={() => irPara('recuperar')} hitSlop={10} style={{ alignSelf: 'center' }}>
+                <Texto variante="corpo" cor={Cores.verde}>
+                  Esqueci minha senha
+                </Texto>
+              </Pressable>
+            ) : null}
+
             <Pressable
-              onPress={() => {
-                setErro('');
-                setModo((m) => (m === 'criar' ? 'entrar' : 'criar'));
-              }}
+              onPress={() => irPara(modo === 'criar' ? 'entrar' : 'criar')}
               hitSlop={10}
               style={{ alignSelf: 'center', paddingTop: Espaco.xs }}>
               <Texto variante="corpo" cor={Cores.textoSecundario}>
                 {modo === 'criar' ? 'Já tenho conta' : 'Não tenho conta, quero criar'}
               </Texto>
             </Pressable>
+            </>
+            )}
           </View>
+
+          {aviso ? (
+            <Texto variante="corpo" cor={Cores.verde} style={{ textAlign: 'center' }}>
+              {aviso}
+            </Texto>
+          ) : null}
 
           {erro ? (
             <Texto variante="corpo" cor={Cores.perigo} style={{ textAlign: 'center' }}>

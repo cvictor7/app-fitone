@@ -15,6 +15,7 @@ import { EditorEstacoes } from '@/components/editor-estacoes';
 import { Texto } from '@/components/texto';
 import { Cores, Espaco, Fontes, Raio, infoModalidade, type Modalidade } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
+import { erroDeConexao, guardarSessaoNaFila } from '@/lib/fila-envio';
 import { useSessao } from '@/lib/sessao';
 import { supabase } from '@/lib/supabase';
 import {
@@ -292,9 +293,7 @@ export default function Timer() {
     const resumo = resumoTimer(cfg, fimDecorrido, rodadas, reps, parciaisFinais);
     const emDupla = dupla ? `Em dupla${parceiro.trim() ? ` com ${parceiro.trim()}` : ''}` : '';
     const observacao = [resumo, emDupla, nota.trim()].filter(Boolean).join('\n');
-    const { data, error } = await supabase
-      .from('sessoes')
-      .insert({
+    const linha = {
         id: idSessao,
         gym_id: gymId,
         modalidade,
@@ -306,9 +305,16 @@ export default function Timer() {
         sensacao,
         observacao,
         status: 'concluida',
-      })
-      .select('id')
-      .single();
+      };
+    const { data, error } = await supabase.from('sessoes').insert(linha).select('id').single();
+    if (error && erroDeConexao(error.message)) {
+      await guardarSessaoNaFila(linha);
+      setSalvando(false);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Guardado no celular', 'Está sem internet. Sobe sozinho quando a conexão voltar.');
+      router.replace('/');
+      return;
+    }
     setSalvando(false);
     // 23505 = já tinha salvo na tentativa anterior (a resposta é que se perdeu)
     if (error && error.code === '23505') {

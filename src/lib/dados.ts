@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import type { TimerPrescrito } from '@/lib/timer';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -185,6 +187,7 @@ type Estado = {
   sequencia: number;
   recordes: Recorde[];
   feitosHoje: { id: string; treinoId: string | null; modalidade: Modalidade }[]; // mais recente primeiro
+  semInternet: boolean; // mostrando a última cópia guardada no celular
 };
 
 const VAZIO: Estado = {
@@ -198,6 +201,7 @@ const VAZIO: Estado = {
   sequencia: 0,
   recordes: [],
   feitosHoje: [],
+  semInternet: false,
 };
 
 export function useDadosAluno() {
@@ -239,13 +243,34 @@ export function useDadosAluno() {
         .limit(10),
     ]);
 
+    // Cópia no celular: sem internet na academia, o plano continua abrindo e dá para treinar
+    const chaveCache = `fitone:cache-aluno:${uid}`;
+    let dPlano: any = rPlano.data;
+    let dSessoes: any[] = rSessoes.data ?? [];
+    let dRecordes: any[] = rRecordes.data ?? [];
+    let semInternet = false;
     const erro = rPlano.error ?? rSessoes.error ?? rRecordes.error;
     if (erro) {
-      setEstado({ ...VAZIO, carregando: false, erro: erro.message });
-      return;
+      let cache: any = null;
+      try {
+        const t = await AsyncStorage.getItem(chaveCache);
+        cache = t ? JSON.parse(t) : null;
+      } catch {
+        cache = null;
+      }
+      if (!cache) {
+        setEstado({ ...VAZIO, carregando: false, erro: erro.message });
+        return;
+      }
+      dPlano = cache.plano;
+      dSessoes = cache.sessoes ?? [];
+      dRecordes = cache.recordes ?? [];
+      semInternet = true;
+    } else {
+      AsyncStorage.setItem(chaveCache, JSON.stringify({ plano: dPlano, sessoes: dSessoes, recordes: dRecordes })).catch(() => {});
     }
 
-    const sessoes = (rSessoes.data ?? []).map((s) => ({
+    const sessoes = dSessoes.map((s: any) => ({
       id: s.id as string,
       treinoId: s.treino_id as string | null,
       modalidade: s.modalidade as Modalidade,
@@ -253,7 +278,7 @@ export function useDadosAluno() {
     }));
 
     let plano: Plano | null = null;
-    const p = rPlano.data as any;
+    const p = dPlano;
     if (p) {
       const treinos: Treino[] = (p.treinos ?? [])
         .map((t: any) => ({
@@ -314,7 +339,7 @@ export function useDadosAluno() {
       return { rotulo, data, feitos, hoje: mesmoDia(data, hoje) };
     });
 
-    const recordes: Recorde[] = (rRecordes.data ?? []).map((r: any) => ({
+    const recordes: Recorde[] = dRecordes.map((r: any) => ({
       exercicio: r.exercicio?.nome ?? '',
       valorKg: Number(r.valor),
       quando: new Date(r.alcancado_em),
@@ -323,6 +348,7 @@ export function useDadosAluno() {
     setEstado({
       carregando: false,
       erro: null,
+      semInternet,
       plano,
       treinoDeHoje: plano ? (treinosDoDia(plano.treinos, hoje)[0] ?? null) : null,
       treinosDeHoje: plano ? treinosDoDia(plano.treinos, hoje) : [],

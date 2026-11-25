@@ -22,6 +22,7 @@ import { VideoExercicio } from '@/components/video-exercicio';
 import { Cores, Espaco, Fontes, Raio } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
 import { agendarFimDescanso, cancelarAvisoDescanso, pedirPermissaoAviso } from '@/lib/descanso';
+import { erroDeConexao, guardarTreinoNaFila } from '@/lib/fila-envio';
 import { useSessao } from '@/lib/sessao';
 import {
   apagarTreinoAtivo,
@@ -298,10 +299,16 @@ export default function ModoTreino() {
       const r = await salvarTreino(treino!);
       setSalvando(false);
       if (!r.ok) {
-        Alert.alert(
-          'Sem conexão',
-          `O treino continua salvo no celular. Tente de novo quando tiver internet.\n(${r.erro})`,
-        );
+        if (erroDeConexao(r.erro)) {
+          // sem internet: guarda e sobe sozinho depois; a pessoa não fica presa na tela
+          await guardarTreinoNaFila(treino!);
+          await apagarTreinoAtivo();
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          Alert.alert('Treino guardado no celular', 'Está sem internet. Ele sobe sozinho quando a conexão voltar.');
+          router.replace('/');
+          return;
+        }
+        Alert.alert('Não deu para salvar', `O treino continua no celular. Tente de novo.\n(${r.erro})`);
         return;
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

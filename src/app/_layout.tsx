@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { ArquivosDeFonte, Cores } from '@/constants/theme';
+import { useSincronizarFila } from '@/lib/fila-envio';
 import { ProvedorSessao, useSessao } from '@/lib/sessao';
 
 // Segura a tela de abertura (logo) até as fontes e o login carregarem
@@ -46,6 +47,9 @@ function Navegacao() {
   const cadastroFeito = logado && aceitouTermos && !!perfil?.nome;
   const temAcademia = cadastroFeito && !!gymId;
   const ehPersonal = papel === 'personal' || papel === 'admin';
+
+  // treinos feitos sem internet sobem sozinhos quando a conexão volta
+  useSincronizarFila(temAcademia);
 
   useEffect(() => {
     if (!carregando) SplashScreen.hideAsync();
