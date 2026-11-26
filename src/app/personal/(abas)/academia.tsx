@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/avatar";
 import { Botao } from "@/components/botao";
 import { CheckinAdmin } from "@/components/checkin-admin";
+import { Recursos } from "@/constants/recursos";
 import { Campo } from "@/components/campo";
 import { FolhaOpcoes, type ConteudoFolha } from "@/components/folha-opcoes";
 import { Texto } from "@/components/texto";
@@ -416,7 +417,7 @@ export default function PainelAcademia() {
               <View style={estilos.bloco}>
                 <Texto variante="rotulo">QUEM SUMIU · 14+ DIAS SEM APARECER</Texto>
                 <Texto variante="legenda">
-                  Último treino no app ou check-in. Vale uma mensagem ou um toque do personal.
+                  Sem treino registrado no app. Vale uma mensagem ou um toque do personal.
                 </Texto>
                 {(verTodosSumidos ? sumidos : sumidos.slice(0, 5)).map((s) => (
                   <View key={s.userId} style={estilos.linhaSumido}>
@@ -474,7 +475,7 @@ export default function PainelAcademia() {
           </>
         )}
 
-        {gymId ? <CheckinAdmin gymId={gymId} /> : null}
+        {gymId && Recursos.checkin ? <CheckinAdmin gymId={gymId} /> : null}
 
         <View style={estilos.bloco}>
           <Texto variante="rotulo">NOVO AVISO PARA TODOS</Texto>
