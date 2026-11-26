@@ -17,7 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Botao } from '@/components/botao';
 import { Texto } from '@/components/texto';
-import { ListaExercicios } from '@/components/lista-exercicios';
 import { VideoExercicio } from '@/components/video-exercicio';
 import { Cores, Espaco, Fontes, Raio } from '@/constants/theme';
 import { useDadosAluno } from '@/lib/dados';
@@ -35,8 +34,9 @@ import {
 } from '@/lib/treino-ativo';
 
 // MODO TREINO
-// Faixa com todos os exercícios no topo (dá para fazer fora da ordem), séries já preenchidas
-// com a carga da última vez, descanso automático com −15/+15 e botões grandes.
+// Lista de cartões, um por exercício (como os apps de academia): o atual fica aberto com as séries;
+// os outros mostram a última carga e abrem com um toque (dá para fazer fora da ordem).
+// Séries já preenchidas com a carga da última vez, descanso automático com −15/+15.
 
 function mmss(totalS: number) {
   const s = Math.max(0, Math.round(totalS));
@@ -65,10 +65,10 @@ export default function ModoTreino() {
   const [descansoFim, setDescansoFim] = useState<number | null>(null);
   const [descansoTotal, setDescansoTotal] = useState(0);
   const [salvando, setSalvando] = useState(false);
-  const [verVideo, setVerVideo] = useState(false);
-  const [verLista, setVerLista] = useState(false);
+  const [verVideoDe, setVerVideoDe] = useState<number | null>(null); // índice do exercício com o vídeo aberto
   const iniciou = useRef(false);
-  const faixa = useRef<ComponentRef<typeof ScrollView>>(null);
+  const lista = useRef<ComponentRef<typeof ScrollView>>(null);
+  const posicoes = useRef<number[]>([]); // altura de cada cartão na lista (para rolar até o atual)
 
   // ---------- abrir: continua o que estava salvo no celular ou monta um novo
   useEffect(() => {
@@ -134,6 +134,17 @@ export default function ModoTreino() {
     });
   }, []);
 
+  // quando o exercício atual muda (toque ou fim das séries), rola a lista até ele
+  const atualIdx = treino?.atual ?? -1;
+  useEffect(() => {
+    if (atualIdx < 0) return;
+    const id = setTimeout(() => {
+      const y = posicoes.current[atualIdx];
+      if (y != null) lista.current?.scrollTo({ y: Math.max(0, y - Espaco.sm), animated: true });
+    }, 120);
+    return () => clearTimeout(id);
+  }, [atualIdx]);
+
   if (!treino) {
     return (
       <SafeAreaView style={estilos.tela}>
@@ -159,7 +170,6 @@ export default function ModoTreino() {
   function irPara(i: number) {
     Haptics.selectionAsync();
     atualizar((t) => ({ ...t, atual: i }));
-    faixa.current?.scrollTo({ x: Math.max(0, 90 + i * 54 - 120), animated: true });
   }
 
   function iniciarDescanso(segundos: number, textoProximo: string) {
@@ -366,46 +376,12 @@ export default function ModoTreino() {
         </Pressable>
       </View>
 
-      {/* Faixa com todos os exercícios: toca e pula para qualquer um */}
-      <View style={{ height: 62 }}>
-      <ScrollView
-        ref={faixa}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={{ flexGrow: 0 }}
-        contentContainerStyle={estilos.faixa}>
-        <Pressable accessibilityLabel="Ver lista de exercícios" onPress={() => setVerLista(true)} style={[estilos.chip, estilos.chipLista]}>
-          <Texto variante="subtitulo" style={{ fontSize: 16 }}>
-            ☰ Lista
-          </Texto>
-        </Pressable>
-        {treino.exercicios.map((e, i) => {
-          const completo = exercicioCompleto(e);
-          const atual = i === treino.atual;
-          return (
-            <Pressable
-              key={e.treinoExercicioId}
-              accessibilityLabel={`Exercício ${i + 1}, ${e.nome}${completo ? ', feito' : ''}`}
-              onPress={() => irPara(i)}
-              style={[estilos.chip, completo && estilos.chipFeito, atual && estilos.chipAtual]}>
-              <Texto
-                variante="subtitulo"
-                cor={atual ? Cores.preto : completo ? Cores.verde : Cores.textoSecundario}
-                style={{ fontSize: 19 }}>
-                {i + 1}
-                {completo && !atual ? '✓' : ''}
-              </Texto>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-      </View>
       <View style={estilos.progresso}>
         <View style={[estilos.progressoCheio, { width: `${(seriesFeitas / Math.max(1, totalSeries)) * 100}%` }]} />
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
+        <ScrollView ref={lista} contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
           {tudoFeito && treino.cardio ? (
             <View style={estilos.cardio}>
               <Texto variante="rotulo" cor={Cores.amarelo}>
@@ -417,7 +393,7 @@ export default function ModoTreino() {
             </View>
           ) : null}
 
-          {treino.observacaoTreino && treino.atual === 0 && seriesFeitas === 0 ? (
+          {treino.observacaoTreino ? (
             <View style={estilos.cardio}>
               <Texto variante="rotulo" cor={Cores.verde}>
                 ORIENTAÇÃO DO DIA
@@ -426,145 +402,201 @@ export default function ModoTreino() {
             </View>
           ) : null}
 
-          <View style={{ gap: 4 }}>
-            <Texto variante="rotulo">
-              EXERCÍCIO {treino.atual + 1} DE {treino.exercicios.length} · {ex.grupo.toUpperCase()}
-            </Texto>
-            <Texto variante="titulo" style={{ fontSize: 30, lineHeight: 32 }}>
-              {ex.nome}
-            </Texto>
-            <Texto variante="legenda">
-              Meta: {ex.repsMin === ex.repsMax ? ex.repsMin : `${ex.repsMin} a ${ex.repsMax}`} reps · descanso {ex.descansoS} s
-            </Texto>
-            {ex.observacao ? (
-              <Texto variante="corpo" cor={Cores.verde}>
-                {ex.observacao}
-              </Texto>
-            ) : null}
-            {ex.notaAnterior ? (
-              <Texto variante="legenda" cor={Cores.amarelo}>
-                📝 Da última vez você anotou: "{ex.notaAnterior.texto}"
-              </Texto>
-            ) : null}
-            {ex.midiaUrl || ex.instrucoes ? (
-              <Pressable onPress={() => setVerVideo(true)} style={estilos.botaoVideo}>
-                <Texto variante="corpo" style={{ fontFamily: Fontes.textoSemi }}>
-                  {ex.midiaUrl ? '▶ Ver vídeo do exercício' : 'Como fazer'}
-                </Texto>
-              </Pressable>
-            ) : null}
-          </View>
 
-          {/* Tabela de séries */}
-          <View style={estilos.tabela}>
-            <View style={estilos.linhaCab}>
-              <Texto variante="rotulo" style={estilos.colSerie}>
-                SÉRIE
-              </Texto>
-              <Texto variante="rotulo" style={estilos.colAnterior}>
-                ANTERIOR
-              </Texto>
-              <Texto variante="rotulo" style={estilos.colKg}>
-                KG
-              </Texto>
-              <Texto variante="rotulo" style={estilos.colReps}>
-                REPS
-              </Texto>
-              <View style={estilos.colCheck} />
-            </View>
-
-            {ex.series.map((s, i) => {
-              const proxima = i === proximaSerie;
-              return (
-                <View key={i} style={[estilos.linha, s.feita && estilos.linhaFeita]}>
-                  <Texto variante="numero" style={[estilos.colSerie, { fontSize: 24, lineHeight: 26 }]}>
-                    {s.numero}
-                  </Texto>
-                  <Texto variante="legenda" style={estilos.colAnterior}>
-                    {textoAnterior(ex.anterior[i])}
-                  </Texto>
-                  <View style={estilos.colKg}>
-                    <TextInput
-                      value={s.kg}
-                      onChangeText={(v) => mudarCampo(i, 'kg', v)}
-                      keyboardType="decimal-pad"
-                      selectTextOnFocus
-                      placeholder="—"
-                      placeholderTextColor={Cores.textoApagado}
-                      style={[estilos.celula, proxima && estilos.celulaProxima, s.feita && estilos.celulaFeita]}
-                    />
-                  </View>
-                  <View style={estilos.colReps}>
-                    <TextInput
-                      value={s.reps}
-                      onChangeText={(v) => mudarCampo(i, 'reps', v)}
-                      keyboardType="number-pad"
-                      selectTextOnFocus
-                      placeholder="—"
-                      placeholderTextColor={Cores.textoApagado}
-                      style={[estilos.celula, proxima && estilos.celulaProxima, s.feita && estilos.celulaFeita]}
-                    />
-                  </View>
+          {/* Lista de exercícios: o atual fica aberto; toca em outro para abrir (pode fazer fora da ordem) */}
+          {treino.exercicios.map((e, i) => {
+            const aberto = i === treino.atual;
+            const feitas = e.series.filter((x) => x.feita).length;
+            const completo = exercicioCompleto(e);
+            const ultima = e.anterior.find((a) => a.kg != null || a.reps != null);
+            return (
+              <View
+                key={e.treinoExercicioId}
+                onLayout={(ev) => {
+                  posicoes.current[i] = ev.nativeEvent.layout.y;
+                }}
+                style={[estilos.card, aberto && estilos.cardAberto, completo && !aberto && estilos.cardFeito]}>
+                <Pressable
+                  onPress={() => (aberto ? null : irPara(i))}
+                  accessibilityLabel={`${e.nome}${completo ? ', feito' : ''}`}
+                  style={estilos.cardTopo}>
                   <Pressable
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: s.feita }}
-                    accessibilityLabel={`Série ${s.numero} feita`}
-                    onPress={() => marcarSerie(i)}
-                    hitSlop={6}
-                    style={[estilos.check, s.feita && estilos.checkFeito]}>
-                    <Texto variante="subtitulo" cor={s.feita ? Cores.preto : Cores.textoApagado} style={{ fontSize: 20 }}>
-                      ✓
+                    onPress={() => {
+                      if (!aberto) irPara(i);
+                      if (e.midiaUrl || e.instrucoes) setVerVideoDe(i);
+                    }}
+                    style={[estilos.miniatura, completo && { backgroundColor: Cores.verde }]}>
+                    <Texto variante="subtitulo" cor={completo ? Cores.preto : Cores.texto} style={{ fontSize: 18 }}>
+                      {completo ? '✓' : e.midiaUrl ? '▶' : i + 1}
                     </Texto>
                   </Pressable>
-                </View>
-              );
-            })}
+                  <View style={{ flex: 1 }}>
+                    <Texto variante="subtitulo" style={{ fontSize: 19, lineHeight: 22 }} numberOfLines={aberto ? 3 : 2}>
+                      {e.nome}
+                    </Texto>
+                    <Texto variante="legenda">
+                      {e.grupo} · {e.series.length} × {e.repsMin === e.repsMax ? e.repsMin : `${e.repsMin}–${e.repsMax}`}
+                    </Texto>
+                  </View>
+                  <Texto variante="legenda" cor={completo ? Cores.verde : feitas > 0 ? Cores.amarelo : Cores.textoApagado}>
+                    {feitas}/{e.series.length}
+                  </Texto>
+                </Pressable>
 
-            {/* Carga rápida da próxima série */}
-            {proximaSerie >= 0 ? (
-              <View style={estilos.linhaKg}>
-                {[-5, -2.5, 2.5, 5].map((d) => (
-                  <Pressable key={d} onPress={() => somarKg(proximaSerie, d)} style={estilos.botaoKg}>
-                    <Texto variante="subtitulo" style={{ fontSize: 17 }}>
-                      {d > 0 ? '+' : '−'}
-                      {String(Math.abs(d)).replace('.', ',')}
-                    </Texto>
-                  </Pressable>
-                ))}
+                {!aberto ? (
+                  ultima ? (
+                    <View style={estilos.cardRodape}>
+                      <Texto variante="legenda">
+                        Última vez{'  '}
+                        <Texto variante="legenda" cor={Cores.texto} style={{ fontFamily: Fontes.textoSemi }}>
+                          {textoAnterior(ultima)}
+                        </Texto>
+                      </Texto>
+                      <Texto variante="legenda" cor={Cores.textoApagado}>
+                        ›
+                      </Texto>
+                    </View>
+                  ) : null
+                ) : (
+                  <View style={{ gap: Espaco.md }}>
+                    <View style={{ gap: 4 }}>
+                      <Texto variante="legenda">
+                        Meta: {ex.repsMin === ex.repsMax ? ex.repsMin : `${ex.repsMin} a ${ex.repsMax}`} reps · descanso {ex.descansoS} s
+                      </Texto>
+                      {ex.observacao ? (
+                        <Texto variante="corpo" cor={Cores.verde}>
+                          {ex.observacao}
+                        </Texto>
+                      ) : null}
+                      {ex.notaAnterior ? (
+                        <Texto variante="legenda" cor={Cores.amarelo}>
+                          📝 Da última vez você anotou: "{ex.notaAnterior.texto}"
+                        </Texto>
+                      ) : null}
+                      {ex.midiaUrl || ex.instrucoes ? (
+                        <Pressable onPress={() => setVerVideoDe(treino.atual)} style={estilos.botaoVideo}>
+                          <Texto variante="corpo" style={{ fontFamily: Fontes.textoSemi }}>
+                            {ex.midiaUrl ? '▶ Ver vídeo do exercício' : 'Como fazer'}
+                          </Texto>
+                        </Pressable>
+                      ) : null}
+                    </View>
+
+                    {/* Tabela de séries */}
+                    <View style={estilos.tabela}>
+                      <View style={estilos.linhaCab}>
+                        <Texto variante="rotulo" style={estilos.colSerie}>
+                          SÉRIE
+                        </Texto>
+                        <Texto variante="rotulo" style={estilos.colAnterior}>
+                          ANTERIOR
+                        </Texto>
+                        <Texto variante="rotulo" style={estilos.colKg}>
+                          KG
+                        </Texto>
+                        <Texto variante="rotulo" style={estilos.colReps}>
+                          REPS
+                        </Texto>
+                        <View style={estilos.colCheck} />
+                      </View>
+
+                      {ex.series.map((s, i) => {
+                        const proxima = i === proximaSerie;
+                        return (
+                          <View key={i} style={[estilos.linha, s.feita && estilos.linhaFeita]}>
+                            <Texto variante="numero" style={[estilos.colSerie, { fontSize: 24, lineHeight: 26 }]}>
+                              {s.numero}
+                            </Texto>
+                            <Texto variante="legenda" style={estilos.colAnterior}>
+                              {textoAnterior(ex.anterior[i])}
+                            </Texto>
+                            <View style={estilos.colKg}>
+                              <TextInput
+                                value={s.kg}
+                                onChangeText={(v) => mudarCampo(i, 'kg', v)}
+                                keyboardType="decimal-pad"
+                                selectTextOnFocus
+                                placeholder="—"
+                                placeholderTextColor={Cores.textoApagado}
+                                style={[estilos.celula, proxima && estilos.celulaProxima, s.feita && estilos.celulaFeita]}
+                              />
+                            </View>
+                            <View style={estilos.colReps}>
+                              <TextInput
+                                value={s.reps}
+                                onChangeText={(v) => mudarCampo(i, 'reps', v)}
+                                keyboardType="number-pad"
+                                selectTextOnFocus
+                                placeholder="—"
+                                placeholderTextColor={Cores.textoApagado}
+                                style={[estilos.celula, proxima && estilos.celulaProxima, s.feita && estilos.celulaFeita]}
+                              />
+                            </View>
+                            <Pressable
+                              accessibilityRole="checkbox"
+                              accessibilityState={{ checked: s.feita }}
+                              accessibilityLabel={`Série ${s.numero} feita`}
+                              onPress={() => marcarSerie(i)}
+                              hitSlop={6}
+                              style={[estilos.check, s.feita && estilos.checkFeito]}>
+                              <Texto variante="subtitulo" cor={s.feita ? Cores.preto : Cores.textoApagado} style={{ fontSize: 20 }}>
+                                ✓
+                              </Texto>
+                            </Pressable>
+                          </View>
+                        );
+                      })}
+
+                      {/* Carga rápida da próxima série */}
+                      {proximaSerie >= 0 ? (
+                        <View style={estilos.linhaKg}>
+                          {[-5, -2.5, 2.5, 5].map((d) => (
+                            <Pressable key={d} onPress={() => somarKg(proximaSerie, d)} style={estilos.botaoKg}>
+                              <Texto variante="subtitulo" style={{ fontSize: 17 }}>
+                                {d > 0 ? '+' : '−'}
+                                {String(Math.abs(d)).replace('.', ',')}
+                              </Texto>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <View style={estilos.linhaSeries}>
+                      <Pressable onPress={adicionarSerie} hitSlop={8}>
+                        <Texto variante="corpo" cor={Cores.verde}>
+                          + Adicionar série
+                        </Texto>
+                      </Pressable>
+                      {ex.series.length > 1 && !ex.series[ex.series.length - 1].feita ? (
+                        <Pressable onPress={removerUltimaSerie} hitSlop={8}>
+                          <Texto variante="corpo" cor={Cores.textoSecundario}>
+                            Tirar última
+                          </Texto>
+                        </Pressable>
+                      ) : null}
+                    </View>
+
+                    {/* Anotação do aluno neste exercício (aparece na próxima vez e para o personal) */}
+                    <TextInput
+                      value={ex.nota ?? ''}
+                      onChangeText={(v) =>
+                        atualizar((t) => {
+                          t.exercicios[t.atual].nota = v.slice(0, 300);
+                          return t;
+                        })
+                      }
+                      placeholder="📝 Como foi? (ex.: senti o ombro, dá para subir a carga)"
+                      placeholderTextColor={Cores.textoApagado}
+                      multiline
+                      maxLength={300}
+                      style={estilos.nota}
+                    />
+                  </View>
+                )}
               </View>
-            ) : null}
-          </View>
-
-          <View style={estilos.linhaSeries}>
-            <Pressable onPress={adicionarSerie} hitSlop={8}>
-              <Texto variante="corpo" cor={Cores.verde}>
-                + Adicionar série
-              </Texto>
-            </Pressable>
-            {ex.series.length > 1 && !ex.series[ex.series.length - 1].feita ? (
-              <Pressable onPress={removerUltimaSerie} hitSlop={8}>
-                <Texto variante="corpo" cor={Cores.textoSecundario}>
-                  Tirar última
-                </Texto>
-              </Pressable>
-            ) : null}
-          </View>
-
-          {/* Anotação do aluno neste exercício (aparece na próxima vez e para o personal) */}
-          <TextInput
-            value={ex.nota ?? ''}
-            onChangeText={(v) =>
-              atualizar((t) => {
-                t.exercicios[t.atual].nota = v.slice(0, 300);
-                return t;
-              })
-            }
-            placeholder="📝 Como foi? (ex.: senti o ombro, dá para subir a carga)"
-            placeholderTextColor={Cores.textoApagado}
-            multiline
-            maxLength={300}
-            style={estilos.nota}
-          />
+            );
+          })}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -603,21 +635,15 @@ export default function ModoTreino() {
         </View>
       ) : null}
 
-      <ListaExercicios
-        visivel={verLista}
-        exercicios={treino.exercicios}
-        atual={treino.atual}
-        aoFechar={() => setVerLista(false)}
-        aoEscolher={irPara}
-      />
-
-      <VideoExercicio
-        visivel={verVideo}
-        aoFechar={() => setVerVideo(false)}
-        nome={ex.nome}
-        url={ex.midiaUrl}
-        instrucoes={ex.instrucoes}
-      />
+      {verVideoDe !== null && treino.exercicios[verVideoDe] ? (
+        <VideoExercicio
+          visivel
+          aoFechar={() => setVerVideoDe(null)}
+          nome={treino.exercicios[verVideoDe].nome}
+          url={treino.exercicios[verVideoDe].midiaUrl}
+          instrucoes={treino.exercicios[verVideoDe].instrucoes}
+        />
+      ) : null}
 
       <View style={estilos.rodape}>
         {tituloBotao ? <Botao titulo={tituloBotao} onPress={acaoBotao} disabled={salvando} /> : null}
@@ -641,6 +667,32 @@ const estilos = StyleSheet.create({
     textAlignVertical: 'top',
   },
   tela: { flex: 1, backgroundColor: Cores.fundo },
+  card: {
+    backgroundColor: Cores.superficie,
+    borderRadius: Raio.lg,
+    borderWidth: 1.5,
+    borderColor: Cores.borda,
+    padding: Espaco.md,
+    gap: Espaco.sm,
+  },
+  cardAberto: { borderColor: Cores.verde },
+  cardFeito: { opacity: 0.6 },
+  cardTopo: { flexDirection: 'row', alignItems: 'center', gap: Espaco.md },
+  miniatura: {
+    width: 52,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: Cores.superficieAlta,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardRodape: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: Cores.borda,
+    paddingTop: Espaco.sm,
+  },
   topo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -665,7 +717,7 @@ const estilos = StyleSheet.create({
   chipAtual: { backgroundColor: Cores.verde, borderColor: Cores.verde },
   progresso: { height: 4, backgroundColor: Cores.superficieAlta, marginHorizontal: Espaco.md, borderRadius: 2, overflow: 'hidden' },
   progressoCheio: { height: '100%', backgroundColor: Cores.verde },
-  conteudo: { padding: Espaco.md + 4, gap: Espaco.lg, paddingBottom: Espaco.xl },
+  conteudo: { padding: Espaco.md, gap: Espaco.md, paddingBottom: Espaco.xl * 2 },
   botaoVideo: {
     alignSelf: 'flex-start',
     marginTop: Espaco.xs,
@@ -674,7 +726,7 @@ const estilos = StyleSheet.create({
     borderRadius: Raio.pilula,
     backgroundColor: Cores.superficieAlta,
   },
-  tabela: { backgroundColor: Cores.superficie, borderRadius: Raio.lg, paddingHorizontal: Espaco.md, paddingBottom: Espaco.sm },
+  tabela: { backgroundColor: Cores.fundo, borderRadius: Raio.md, paddingHorizontal: Espaco.sm, paddingBottom: Espaco.sm },
   linhaCab: { flexDirection: 'row', alignItems: 'center', paddingVertical: Espaco.sm, gap: 6 },
   linha: {
     flexDirection: 'row',
