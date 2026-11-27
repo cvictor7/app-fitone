@@ -4,7 +4,8 @@ import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Location from 'expo-location';
 import { router, useLocalSearchParams } from 'expo-router';
-import * as Speech from 'expo-speech';
+import { BotaoVoz } from '@/components/botao-voz';
+import { falar } from '@/lib/voz';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,7 +100,7 @@ export default function TelaGps() {
           setEstado(r2.estado);
           if (r2.kmFechado) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Speech.speak(falaDoKm(r2.kmFechado, tipo), { language: 'pt-BR' });
+            falar(falaDoKm(r2.kmFechado, tipo));
           }
         },
       );
@@ -155,17 +156,17 @@ export default function TelaGps() {
   function comecar() {
     setFase('contagem');
     setContagem(3);
-    Speech.speak('3', { language: 'pt-BR' });
+    falar('3');
     let n = 3;
     const t = setInterval(() => {
       n -= 1;
       if (n > 0) {
         setContagem(n);
-        Speech.speak(String(n), { language: 'pt-BR' });
+        falar(String(n));
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       } else {
         clearInterval(t);
-        Speech.speak('Vai!', { language: 'pt-BR' });
+        falar('Vai!');
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         inicio.current = Date.now();
         desdeMs.current = Date.now();
@@ -201,7 +202,7 @@ export default function TelaGps() {
           acumuladoS.current = movimentoS();
           desdeMs.current = 0;
           setFase('fim');
-          Speech.speak(`Fim. ${textoKm(estadoRef.current.distanciaM).replace(',', ' vírgula ')} quilômetros.`, { language: 'pt-BR' });
+          falar(`Fim. ${textoKm(estadoRef.current.distanciaM).replace(',', ' vírgula ')} quilômetros.`);
         },
       },
     ]);
@@ -382,7 +383,7 @@ export default function TelaGps() {
   const rodando = fase === 'ativo' || fase === 'pausado';
   return (
     <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-      <BarraTopo titulo={`${info.nome} com GPS`} />
+      <BarraTopo titulo={`${info.nome} com GPS`} direita={<BotaoVoz />} />
       <MapaPercurso
         trechos={rodando ? coordTrechos : aqui ? [[aqui]] : []}
         seguir

@@ -4,6 +4,9 @@ import * as Haptics from 'expo-haptics';
 import { useKeepAwake } from 'expo-keep-awake';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Speech from 'expo-speech';
+
+import { BotaoVoz } from '@/components/botao-voz';
+import { falar as falarVoz } from '@/lib/voz';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -71,8 +74,7 @@ type TreinoSalvo = {
 const CHAVE_SALVOS = 'fitone:estacoes-salvas';
 
 function falar(texto: string) {
-  Speech.stop();
-  Speech.speak(texto, { language: 'pt-BR', rate: 1.05 });
+  falarVoz(texto, { interromper: true, rate: 1.05 }); // respeita o botão Voz / Sem voz
 }
 
 export default function Timer() {
@@ -351,7 +353,7 @@ export default function Timer() {
   if (etapa === 'config') {
     return (
       <SafeAreaView style={estilos.tela} edges={['top', 'bottom']}>
-        <BarraTopo titulo={treinoDoPlano ? treinoDoPlano.rotulo : info.nome} />
+        <BarraTopo titulo={treinoDoPlano ? treinoDoPlano.rotulo : info.nome} direita={<BotaoVoz />} />
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
             <View style={estilos.modos}>
@@ -614,9 +616,12 @@ export default function Timer() {
             ✕ Sair
           </Texto>
         </Pressable>
-        <Texto variante="subtitulo" style={{ fontSize: 18 }}>
-          {NOMES_MODO[cfg.modo]}
-        </Texto>
+        <View style={{ alignItems: 'center' }}>
+          <Texto variante="subtitulo" style={{ fontSize: 18 }}>
+            {NOMES_MODO[cfg.modo]}
+          </Texto>
+          <BotaoVoz />
+        </View>
         <Pressable onPress={confirmarTerminar} hitSlop={12}>
           <Texto variante="corpo" cor={info.cor} style={{ fontFamily: Fontes.textoSemi }}>
             Terminar
